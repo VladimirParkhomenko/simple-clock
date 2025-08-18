@@ -1,0 +1,6 @@
+LCD1602 + I2C module
+
+VCC - +5v
+SDA - A4
+SCL - A5
+Address: 0x27

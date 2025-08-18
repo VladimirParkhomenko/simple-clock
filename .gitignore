@@ -1,0 +1,9 @@
+.pio
+.vscode
+.idea
+dev.*
+*.tmp
+*.bak
+*.log
+*.old
+*.ini
