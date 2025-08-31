@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <avr/interrupt.h>
+#include <stdlib.h>
 
 #include "uart.h"
 #include "i2c.h"
@@ -120,9 +121,11 @@ uint16_t read_sensors(){
     DHT22_Read(&dht22_humidity_int, &dht22_humidity_dec, &dht22_temperature_int, &dht22_temperature_dec);  
 
      // Get the latest sensor data from the BMP180       
+    bmp180_temperature = BMP180_readTemperature(); // Read temperature first (required for pressure compensation)
     bmp180_pressure = BMP180_readPressure();   
     pressure_mmHg = bmp180_pressure * 0.75006; // Convert hPa to mmHg
 
+    return 0; // Return value to fix warning
 }
 
 void update_display1() {
@@ -136,25 +139,23 @@ void update_display1() {
 
         read_datetime(); // Read the date and time from the DS3231         
 
-        sprintf(buffer_lcd, "%02d:%02d:%02d %02d/%02d", time_hour, time_minute, time_second, calendar_day, calendar_month);        
+        sprintf(buffer_lcd, "%02d:%02d:%02d  %02d/%02d", time_hour, time_minute, time_second, calendar_day, calendar_month);        
         lcd_set_cursor(0, 0);        
-        lcd_print(buffer_lcd);  
-        
-        // sprintf(buffer_lcd, "t:%d%cC", ds3231_temperature, 0xDF);        
-        // lcd_set_cursor(1, 0);        
-        // lcd_print(buffer_lcd);  
+        lcd_print(buffer_lcd);    
 
-        read_sensors();      
-
+        read_sensors();        
+  
+        dtostrf(bmp180_temperature, 2, 1, buffer_float);   
+        sprintf(buffer_lcd, "%s%c", buffer_float, 0xDF);      
+        lcd_set_cursor(1, 0);        
+        lcd_print(buffer_lcd);
 
         dtostrf(pressure_mmHg, 3, 1, buffer_float);   
         sprintf(buffer_lcd, "%smmHg", buffer_float); 
-        lcd_set_cursor(1, 0);
+        lcd_set_cursor(1, 7);
         lcd_print(buffer_lcd);
 
-        // sprintf(buffer_lcd, "%d", bmp180_pressure); 
-        // lcd_set_cursor(1, 11);
-        // lcd_print(buffer_lcd);
+    
 
         // Clear the flag after updating the display
         display_update_flag = 0;
@@ -170,12 +171,11 @@ void update_display0() {
 
         PORTB ^= (1 << PB5); // Toggle LED on PB5 
 
-        char buffer_lcd[20];
-        char buffer_float[8];   
+        char buffer_lcd[20];   
 
         read_datetime(); // Read the date and time from the DS3231         
 
-        sprintf(buffer_lcd, "%02d:%02d:%02d %02d/%02d", time_hour, time_minute, time_second, calendar_day, calendar_month);        
+        sprintf(buffer_lcd, "%02d:%02d:%02d  %02d/%02d", time_hour, time_minute, time_second, calendar_day, calendar_month);        
         lcd_set_cursor(0, 0);        
         lcd_print(buffer_lcd);  
         
@@ -185,7 +185,7 @@ void update_display0() {
 
         read_sensors();
         
-        sprintf(buffer_lcd, "t:%d.%d%c h:%d.%d%c", dht22_temperature_int, dht22_temperature_dec, 0xDF, dht22_humidity_int, dht22_humidity_dec, 0x25);
+        sprintf(buffer_lcd, "%d.%d%c  %d.%d%c", dht22_temperature_int, dht22_temperature_dec, 0xDF, dht22_humidity_int, dht22_humidity_dec, 0x25);
         lcd_set_cursor(1, 0);        
         lcd_print(buffer_lcd);
 
@@ -242,9 +242,8 @@ int main() {
     _delay_ms(2000);  
     lcd_clear();    
 
-    while (1) {   
-        
-        //update_display1();
+    while (1) {           
+    
       
         uint8_t current_display_mode = (time_second % 20 < 10) ? 0 : 1;
         
