@@ -24,7 +24,7 @@
 #include "lcd1602.h"
 #include "ds3231.h"
 #include "dht22.h"
-#include "bme280.h"
+#include "bmp180.h"
 
 
 #define MODE_BUTTON_PIN PD2
@@ -44,6 +44,7 @@ int8_t current_mode = DISPLAY_0;
 volatile uint8_t button_pressed_flag = DEFAULT_BUTTON;
 volatile uint8_t display_update_flag = 0; // New flag to control display updates
 volatile uint8_t display_show_flag = DISPLAY_0;
+volatile uint8_t previous_display_mode = 0; // Track previous display mode for switching
 
 //char buffer_time[20];
 uint8_t time_hour, time_minute, time_second;
@@ -58,10 +59,13 @@ int8_t ds3231_temperature;
 uint8_t dht22_humidity_int, dht22_humidity_dec, dht22_temperature_int, dht22_temperature_dec;
 
 
-float bme280_temperature;
-float bme280_humidity;
-float bme280_pressure;
+float bmp180_temperature;
+float bmp180_humidity;
+float bmp180_pressure;
 float pressure_mmHg;
+
+void update_display0(void);
+void update_display1(void);
 
 
 void init_buttons_interrupts() {
@@ -115,12 +119,47 @@ void read_datetime() {
 uint16_t read_sensors(){     
     DHT22_Read(&dht22_humidity_int, &dht22_humidity_dec, &dht22_temperature_int, &dht22_temperature_dec);  
 
-     // Get the latest sensor data from the BME280       
-    bme280_temperature = BME280_readTemperature();
-    bme280_humidity = BME280_readHumidity();
-    bme280_pressure = BME280_readPressure();   
-    pressure_mmHg = bme280_pressure * 0.75006; // Convert hPa to mmHg
+     // Get the latest sensor data from the BMP180       
+    bmp180_pressure = BMP180_readPressure();   
+    pressure_mmHg = bmp180_pressure * 0.75006; // Convert hPa to mmHg
 
+}
+
+void update_display1() {
+    // Only update the display if the flag is set
+    if (display_update_flag) {
+
+        PORTB ^= (1 << PB5); // Toggle LED on PB5 
+
+        char buffer_lcd[20];
+        char buffer_float[8];   
+
+        read_datetime(); // Read the date and time from the DS3231         
+
+        sprintf(buffer_lcd, "%02d:%02d:%02d %02d/%02d", time_hour, time_minute, time_second, calendar_day, calendar_month);        
+        lcd_set_cursor(0, 0);        
+        lcd_print(buffer_lcd);  
+        
+        // sprintf(buffer_lcd, "t:%d%cC", ds3231_temperature, 0xDF);        
+        // lcd_set_cursor(1, 0);        
+        // lcd_print(buffer_lcd);  
+
+        read_sensors();      
+
+
+        dtostrf(pressure_mmHg, 3, 1, buffer_float);   
+        sprintf(buffer_lcd, "%smmHg", buffer_float); 
+        lcd_set_cursor(1, 0);
+        lcd_print(buffer_lcd);
+
+        // sprintf(buffer_lcd, "%d", bmp180_pressure); 
+        // lcd_set_cursor(1, 11);
+        // lcd_print(buffer_lcd);
+
+        // Clear the flag after updating the display
+        display_update_flag = 0;
+       
+    }
 }
 
 
@@ -132,14 +171,24 @@ void update_display0() {
         PORTB ^= (1 << PB5); // Toggle LED on PB5 
 
         char buffer_lcd[20];
+        char buffer_float[8];   
 
-        // read_datetime(); // Read the date and time from the DS3231  
-        
-        sprintf(buffer_lcd, "Hello World");
+        read_datetime(); // Read the date and time from the DS3231         
 
-        // sprintf(buffer_lcd, "%02d/%02d/20%02d %02d:%02d:%02d", calendar_day, calendar_month, calendar_year, time_hour, time_minute, time_second);        
+        sprintf(buffer_lcd, "%02d:%02d:%02d %02d/%02d", time_hour, time_minute, time_second, calendar_day, calendar_month);        
         lcd_set_cursor(0, 0);        
-        lcd_print(buffer_lcd);       
+        lcd_print(buffer_lcd);  
+        
+        // sprintf(buffer_lcd, "t:%d%cC", ds3231_temperature, 0xDF);        
+        // lcd_set_cursor(1, 0);        
+        // lcd_print(buffer_lcd);  
+
+        read_sensors();
+        
+        sprintf(buffer_lcd, "t:%d.%d%c h:%d.%d%c", dht22_temperature_int, dht22_temperature_dec, 0xDF, dht22_humidity_int, dht22_humidity_dec, 0x25);
+        lcd_set_cursor(1, 0);        
+        lcd_print(buffer_lcd);
+
 
         // Clear the flag after updating the display
         display_update_flag = 0;
@@ -164,12 +213,12 @@ int main() {
     i2c_init();  
 
     
-    // // Initialize DS3231
-    // DS3231_init();  
+    // Initialize DS3231
+    DS3231_init();  
    
 
-    // // Initialize BME280
-    // BME280_init();   
+    // Initialize bmp180
+    BMP180_init();   
 
     // Initialize Timer1 for 1-second interrupts
     timer1_init();   
@@ -179,12 +228,41 @@ int main() {
     lcd_init();    
     //lcd_clear(); 
     
-    uart_puts("UART initialized \n");  
+    //uart_puts("UART initialized \n");  
     // Main loop   
 
-    while (1) {     
+    //DS3231_setDate(31, 8, 25);
+    //DS3231_setTime(10, 52, 0);
+
+    char buffer_lcd[20];    
+    sprintf(buffer_lcd, "Hello World");
+    lcd_clear();
+    lcd_set_cursor(0, 0);        
+    lcd_print(buffer_lcd);
+    _delay_ms(2000);  
+    lcd_clear();    
+
+    while (1) {   
+        
+        //update_display1();
       
-        update_display0();             
+        uint8_t current_display_mode = (time_second % 20 < 10) ? 0 : 1;
+        
+        if(current_display_mode == 0) {
+            // Check if we just switched to display 0
+            if(previous_display_mode != 0) {
+                lcd_clear_line(1); // Clear line 1 when switching to display 0
+            }
+            update_display0();
+        } else {
+            // Check if we just switched to display 1
+            if(previous_display_mode != 1) {
+                lcd_clear_line(1); // Clear line 1 when switching to display 1
+            }
+            update_display1();
+        }
+        
+        previous_display_mode = current_display_mode;
 
     }
 

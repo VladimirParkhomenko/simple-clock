@@ -65,6 +65,12 @@ void lcd_send_char(char c);
 void lcd_clear(void);
 
 /**
+ * Clear specific line on LCD
+ * @line: line number (0 or 1 for 16x2 LCD)
+ */
+void lcd_clear_line(int line);
+
+/**
  * Move cursor on lcd
  * @col: X
  * @row: Y

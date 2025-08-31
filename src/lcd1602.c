@@ -153,6 +153,25 @@ void lcd_clear()
 	_delay_us(1500);
 }
 
+void lcd_clear_line(int line)
+{
+	// Validate line number (0 or 1 for 16x2 LCD)
+	if (line < 0 || line > 1) {
+		return;
+	}
+	
+	// Set cursor to the beginning of the specified line
+	lcd_set_cursor(line, 0);
+	
+	// Fill the line with spaces (16 characters for 16x2 LCD)
+	for (int i = 0; i < 16; i++) {
+		lcd_send_char(' ');
+	}
+	
+	// Set cursor back to the beginning of the cleared line
+	lcd_set_cursor(line, 0);
+}
+
 void lcd_set_cursor(char row, char col)
 {
 	char adr;

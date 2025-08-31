@@ -1,4 +1,4 @@
-#include "bme280.h"
+#include "bmp180.h"
 #include "i2c.h"
 #include "uart.h"
 
@@ -18,11 +18,11 @@ int32_t t_fine;
 // Function to read a 16-bit unsigned value from the sensor
 // uint16_t read16(uint8_t addr) {
 //     uint16_t value;
-//     i2c_start((BME280_I2C_ADDRESS << 1) | I2C_WRITE);
+//     i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_WRITE);
 //     i2c_write(addr);
 //     i2c_stop();
 
-//     i2c_start((BME280_I2C_ADDRESS << 1) | I2C_READ);
+//     i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_READ);
 //     value = (i2c_read_ack() << 8) | i2c_read_nack();
 //     i2c_stop();
 
@@ -31,10 +31,10 @@ int32_t t_fine;
 
 uint16_t read16(uint8_t addr) {
     uint8_t lsb, msb;
-    i2c_start((BME280_I2C_ADDRESS << 1) | I2C_WRITE);
+    i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_WRITE);
     i2c_write(addr);
     i2c_stop();
-    i2c_start((BME280_I2C_ADDRESS << 1) | I2C_READ);
+    i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_READ);
     lsb = i2c_read_ack();
     msb = i2c_read_nack();
     i2c_stop();
@@ -44,11 +44,11 @@ uint16_t read16(uint8_t addr) {
 // Function to read an 8-bit unsigned value from the sensor
 uint8_t read8(uint8_t addr) {
     uint8_t value;
-    i2c_start((BME280_I2C_ADDRESS << 1) | I2C_WRITE);
+    i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_WRITE);
     i2c_write(addr);
     i2c_stop();
 
-    i2c_start((BME280_I2C_ADDRESS << 1) | I2C_READ);
+    i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_READ);
     value = i2c_read_nack();
     i2c_stop();
 
@@ -90,13 +90,8 @@ void read_calibration_data() {
     sprintf(buffer, "dig_P9: %d\n", dig_P9); uart_puts(buffer);
 }
 
-
-
-
-
-
 // Function to read calibration data and initialize the sensor
-void BME280_init(void) {
+void BMP180_init(void) {
     // Read the calibration data from the sensor
 
     //read_calibration_data();
@@ -149,30 +144,29 @@ void BME280_init(void) {
     // sprintf(bufferd, "dig_P9: %d\n", dig_P9);
     // uart_puts(bufferd);    
 
-
     // Configure the sensor
-    i2c_start((BME280_I2C_ADDRESS << 1) | I2C_WRITE);
+    i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_WRITE);
     i2c_write(0xF2);  // Humidity control register
     i2c_write(0x01);  // Set oversampling to x1
     i2c_stop();
 
-    i2c_start((BME280_I2C_ADDRESS << 1) | I2C_WRITE);
+    i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_WRITE);
     i2c_write(0xF4);  // Control register
     i2c_write(0x27);  // Set mode to normal, oversampling to x1 for pressure, temperature
     i2c_stop();
 }
 
 // Function to read and compensate the temperature value
-float BME280_readTemperature(void) {
+float BMP180_readTemperature(void) {
     int32_t raw_temp;
     uint8_t msb, lsb, xlsb;
 
     // Read raw temperature data
-    i2c_start((BME280_I2C_ADDRESS << 1) | I2C_WRITE);
+    i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_WRITE);
     i2c_write(0xFA); // Temperature register
     i2c_stop();
 
-    i2c_start((BME280_I2C_ADDRESS << 1) | I2C_READ);
+    i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_READ);
     msb = i2c_read_ack();
     lsb = i2c_read_ack();
     xlsb = i2c_read_nack();
@@ -192,49 +186,17 @@ float BME280_readTemperature(void) {
     return temperature;
 }
 
-
-
-// Function to read and compensate the humidity value
-float BME280_readHumidity(void) {
-    int32_t raw_hum;
-    uint8_t msb, lsb;
-
-    // Read raw humidity data
-    i2c_start((BME280_I2C_ADDRESS << 1) | I2C_WRITE);
-    i2c_write(0xFD); // Humidity register
-    i2c_stop();
-
-    i2c_start((BME280_I2C_ADDRESS << 1) | I2C_READ);
-    msb = i2c_read_ack();
-    lsb = i2c_read_nack();
-    i2c_stop();
-
-    raw_hum = (int32_t)((msb << 8) | lsb);
-
-    // Apply humidity compensation
-    int32_t v_x1_u32r;
-    v_x1_u32r = (t_fine - ((int32_t)76800));
-    v_x1_u32r = (((((raw_hum << 14) - (((int32_t)dig_H4) << 20) - (((int32_t)dig_H5) * v_x1_u32r)) + ((int32_t)16384)) >> 15) * (((((((v_x1_u32r * ((int32_t)dig_H6)) >> 10) * (((v_x1_u32r * ((int32_t)dig_H3)) >> 1) + ((int32_t)32768))) >> 10) + ((int32_t)2097152)) * ((int32_t)dig_H2) + 8192) >> 14));
-    v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) * ((int32_t)dig_H1)) >> 4));
-    v_x1_u32r = (v_x1_u32r < 0 ? 0 : v_x1_u32r);
-    v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
-    float humidity = (v_x1_u32r >> 12);
-    humidity /= 1024.0; // Conversion to percentage
-
-    return humidity;
-}
-
 // Function to read and compensate the pressure value
-float BME280_readPressure(void) {
+float BMP180_readPressure(void) {
     int32_t raw_press;
     uint8_t msb, lsb, xlsb;
 
     // Read raw pressure data
-    i2c_start((BME280_I2C_ADDRESS << 1) | I2C_WRITE);
+    i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_WRITE);
     i2c_write(0xF7); // Pressure register
     i2c_stop();
 
-    i2c_start((BME280_I2C_ADDRESS << 1) | I2C_READ);
+    i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_READ);
     msb = i2c_read_ack();
     lsb = i2c_read_ack();
     xlsb = i2c_read_nack();
