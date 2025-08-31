@@ -4,6 +4,7 @@
 
 #include <avr/io.h>
 #include <stdio.h>
+#include <util/delay.h>
 
 // Calibration parameters
 static uint16_t dig_T1, dig_P1;
@@ -117,6 +118,11 @@ void BMP180_init(void) {
     dig_H5 = (int16_t)((read8(0xE6) << 4) | ((read8(0xE5) >> 4) & 0x0F));
     dig_H6 = (int8_t)read8(0xE7);
 
+    // Debug: Print some calibration values to check if sensor is responding
+    char debug_buffer[100];
+    sprintf(debug_buffer, "Calibration check: dig_T1=%u, dig_P1=%u\n", dig_T1, dig_P1);
+    uart_puts(debug_buffer);
+
     // uart_puts("Calibration data read\n");
     // char bufferd[20];
     // sprintf(bufferd, "dig_T1: %d\n", dig_T1);
@@ -191,6 +197,15 @@ float BMP180_readPressure(void) {
     int32_t raw_press;
     uint8_t msb, lsb, xlsb;
 
+    // Start pressure measurement
+    i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_WRITE);
+    i2c_write(0xF4); // Control register
+    i2c_write(0x25); // Start pressure measurement with oversampling x1
+    i2c_stop();
+
+    // Wait for measurement to complete (about 8ms for oversampling x1)
+    _delay_ms(10);
+
     // Read raw pressure data
     i2c_start((BMP180_I2C_ADDRESS << 1) | I2C_WRITE);
     i2c_write(0xF7); // Pressure register
@@ -204,6 +219,11 @@ float BMP180_readPressure(void) {
 
     raw_press = ((int32_t)msb << 12) | ((int32_t)lsb << 4) | ((int32_t)(xlsb >> 4));
 
+    // Debug: Print raw pressure values
+    char debug_buffer[100];
+    sprintf(debug_buffer, "Raw pressure bytes: msb=0x%02X, lsb=0x%02X, xlsb=0x%02X, raw_press=%ld\n", msb, lsb, xlsb, raw_press);
+    uart_puts(debug_buffer);
+
     // Apply pressure compensation formula
     int64_t var1, var2, p;
     var1 = ((int64_t)t_fine) - 128000;
@@ -214,6 +234,7 @@ float BMP180_readPressure(void) {
     var1 = (((((int64_t)1) << 47) + var1)) * ((int64_t)dig_P1) >> 33;
 
     if (var1 == 0) {
+        uart_puts("Error: var1 is zero, division by zero avoided\n");
         return 0;  // avoid exception caused by division by zero
     }
 
