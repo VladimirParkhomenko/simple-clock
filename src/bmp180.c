@@ -76,19 +76,19 @@ void read_calibration_data() {
     dig_P9 = readS16(0x9E);
 
     // Print calibration data for debugging
-    char buffer[100];
-    sprintf(buffer, "dig_T1: %u\n", dig_T1); uart_puts(buffer);
-    sprintf(buffer, "dig_T2: %d\n", dig_T2); uart_puts(buffer);
-    sprintf(buffer, "dig_T3: %d\n", dig_T3); uart_puts(buffer);
-    sprintf(buffer, "dig_P1: %u\n", dig_P1); uart_puts(buffer);
-    sprintf(buffer, "dig_P2: %d\n", dig_P2); uart_puts(buffer);
-    sprintf(buffer, "dig_P3: %d\n", dig_P3); uart_puts(buffer);
-    sprintf(buffer, "dig_P4: %d\n", dig_P4); uart_puts(buffer);
-    sprintf(buffer, "dig_P5: %d\n", dig_P5); uart_puts(buffer);
-    sprintf(buffer, "dig_P6: %d\n", dig_P6); uart_puts(buffer);
-    sprintf(buffer, "dig_P7: %d\n", dig_P7); uart_puts(buffer);
-    sprintf(buffer, "dig_P8: %d\n", dig_P8); uart_puts(buffer);
-    sprintf(buffer, "dig_P9: %d\n", dig_P9); uart_puts(buffer);
+    // char buffer[100];
+    // sprintf(buffer, "dig_T1: %u\n", dig_T1); uart_puts(buffer);
+    // sprintf(buffer, "dig_T2: %d\n", dig_T2); uart_puts(buffer);
+    // sprintf(buffer, "dig_T3: %d\n", dig_T3); uart_puts(buffer);
+    // sprintf(buffer, "dig_P1: %u\n", dig_P1); uart_puts(buffer);
+    // sprintf(buffer, "dig_P2: %d\n", dig_P2); uart_puts(buffer);
+    // sprintf(buffer, "dig_P3: %d\n", dig_P3); uart_puts(buffer);
+    // sprintf(buffer, "dig_P4: %d\n", dig_P4); uart_puts(buffer);
+    // sprintf(buffer, "dig_P5: %d\n", dig_P5); uart_puts(buffer);
+    // sprintf(buffer, "dig_P6: %d\n", dig_P6); uart_puts(buffer);
+    // sprintf(buffer, "dig_P7: %d\n", dig_P7); uart_puts(buffer);
+    // sprintf(buffer, "dig_P8: %d\n", dig_P8); uart_puts(buffer);
+    // sprintf(buffer, "dig_P9: %d\n", dig_P9); uart_puts(buffer);
 }
 
 // Function to read calibration data and initialize the sensor
@@ -119,9 +119,9 @@ void BMP180_init(void) {
     dig_H6 = (int8_t)read8(0xE7);
 
     // Debug: Print some calibration values to check if sensor is responding
-    char debug_buffer[100];
-    sprintf(debug_buffer, "Calibration check: dig_T1=%u, dig_P1=%u\n", dig_T1, dig_P1);
-    uart_puts(debug_buffer);
+    // char debug_buffer[100];
+    // sprintf(debug_buffer, "Calibration check: dig_T1=%u, dig_P1=%u\n", dig_T1, dig_P1);
+    // uart_puts(debug_buffer);
 
     // uart_puts("Calibration data read\n");
     // char bufferd[20];
@@ -220,9 +220,9 @@ float BMP180_readPressure(void) {
     raw_press = ((int32_t)msb << 12) | ((int32_t)lsb << 4) | ((int32_t)(xlsb >> 4));
 
     // Debug: Print raw pressure values
-    char debug_buffer[100];
-    sprintf(debug_buffer, "Raw pressure bytes: msb=0x%02X, lsb=0x%02X, xlsb=0x%02X, raw_press=%ld\n", msb, lsb, xlsb, raw_press);
-    uart_puts(debug_buffer);
+    // char debug_buffer[100];
+    // sprintf(debug_buffer, "Raw pressure bytes: msb=0x%02X, lsb=0x%02X, xlsb=0x%02X, raw_press=%ld\n", msb, lsb, xlsb, raw_press);
+    // uart_puts(debug_buffer);
 
     // Apply pressure compensation formula
     int64_t var1, var2, p;
@@ -234,7 +234,7 @@ float BMP180_readPressure(void) {
     var1 = (((((int64_t)1) << 47) + var1)) * ((int64_t)dig_P1) >> 33;
 
     if (var1 == 0) {
-        uart_puts("Error: var1 is zero, division by zero avoided\n");
+        //uart_puts("Error: var1 is zero, division by zero avoided\n");
         return 0;  // avoid exception caused by division by zero
     }
 

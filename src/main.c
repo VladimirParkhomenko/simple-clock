@@ -26,6 +26,9 @@
 #include "ds3231.h"
 #include "dht22.h"
 #include "bmp180.h"
+#include "pwm.h"
+#include "adc.h"
+#include "buzzer.h"
 
 
 #define MODE_BUTTON_PIN PD2
@@ -37,7 +40,7 @@
 #define MODE_BUTTON 1
 
 #define BACKLIGHT_PIN PD3  // pin for PWM control (display light intensity)
-#define PIN_PHOTOREZISTOR 3 //A3
+#define PIN_PHOTOREZISTOR 2 //A2
 
 
 int8_t current_mode = DISPLAY_0;
@@ -221,7 +224,10 @@ int main() {
     BMP180_init();   
 
     // Initialize Timer1 for 1-second interrupts
-    timer1_init();   
+    timer1_init();  
+    
+    // Initialize Timer2 for buzzer
+    initTimer2();
         
 
     // Initialize LCD
@@ -231,18 +237,37 @@ int main() {
     //uart_puts("UART initialized \n");  
     // Main loop   
 
+    // Initialize buttons with interrupts
+    init_buttons_interrupts();
+
     //DS3231_setDate(31, 8, 25);
     //DS3231_setTime(10, 52, 0);
+
+    // Initialize ADC
+    adc_init();
+
+    // Initialize PWM for backlight control
+    uint16_t light_level;
+    uint8_t brightness;
+    pwm_init(BACKLIGHT_PIN); // Initialize PWM for backlight control
+    pwm_set_duty_cycle(255); // Set the initial brightness level 
 
     char buffer_lcd[20];    
     sprintf(buffer_lcd, "Hello World");
     lcd_clear();
     lcd_set_cursor(0, 0);        
     lcd_print(buffer_lcd);
+    playRingtone2();    
     _delay_ms(2000);  
-    lcd_clear();    
+    lcd_clear();
 
-    while (1) {           
+    while (1) {      
+        
+        
+        if (button_pressed_flag) {
+            playNote(NOTE_A9, SIXTEENTH);     
+            button_pressed_flag = DEFAULT_BUTTON;  // Reset the flag       
+        } 
     
       
         uint8_t current_display_mode = (time_second % 20 < 10) ? 0 : 1;
@@ -262,6 +287,18 @@ int main() {
         }
         
         previous_display_mode = current_display_mode;
+
+        // Read the light level from the photoresistor (assuming it's connected to ADC channel 3)
+        light_level = adc_read(PIN_PHOTOREZISTOR); 
+        // Map the light level to the brightness value (invert the value for dimming)
+        // Assuming light level 0-1023 maps to brightness 0-255        
+        // brightness = 255 - (light_level / 4);  // Invert the value for backlight control
+        // Bright room (high light_level) = bright display
+        // Dark room (low light_level) = dim display
+        brightness = light_level / 20;  // Direct mapping: 0-1023 -> 0-255        
+        // Set the backlight brightness
+        pwm_set_duty_cycle(brightness);
+       
 
     }
 
