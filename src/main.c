@@ -289,7 +289,7 @@ int main() {
 
     //DS3231_setDate(31, 8, 25);
     //DS3231_setTime(10, 52, 0);
-    DS3231_setAlarm2(7, 0);
+    //DS3231_setAlarm2(7, 0);
 
     // Initialize ADC
     adc_init();
