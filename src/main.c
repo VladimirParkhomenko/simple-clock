@@ -192,7 +192,7 @@ void update_display1() {
         lcd_set_cursor(0, 0);        
         lcd_print(buffer_lcd);    
 
-        read_sensors();        
+        read_sensors(); //TODO  - Add night mode. No read sensor  
   
         dtostrf(bmp180_temperature, 2, 1, buffer_float);   
         sprintf(buffer_lcd, "%s%c", buffer_float, 0xDF);      
