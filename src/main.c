@@ -192,22 +192,22 @@ void update_display1() {
         lcd_set_cursor(0, 0);        
         lcd_print(buffer_lcd);    
 
-        read_sensors(); //TODO  - Add night mode. No read sensor  
-  
-        dtostrf(bmp180_temperature, 2, 1, buffer_float);   
-        sprintf(buffer_lcd, "%s%c", buffer_float, 0xDF);      
-        lcd_set_cursor(1, 0);        
-        lcd_print(buffer_lcd);
-
-        dtostrf(pressure_mmHg, 3, 1, buffer_float);   
-        sprintf(buffer_lcd, "%smmHg", buffer_float); 
-        lcd_set_cursor(1, 7);
-        lcd_print(buffer_lcd);
-
+         if (time_hour >= 6 && time_hour <= 23) {
+            read_sensors(); //TODO  - Add night mode. No read sensor  
     
+            dtostrf(bmp180_temperature, 2, 1, buffer_float);   
+            sprintf(buffer_lcd, "%s%c", buffer_float, 0xDF);      
+            lcd_set_cursor(1, 0);        
+            lcd_print(buffer_lcd);
+
+            dtostrf(pressure_mmHg, 3, 1, buffer_float);   
+            sprintf(buffer_lcd, "%smmHg", buffer_float); 
+            lcd_set_cursor(1, 7);
+            lcd_print(buffer_lcd);
+         }    
 
         // Clear the flag after updating the display
-        display_update_flag = 0;
+        //display_update_flag = 0;
        
     //}
 }
@@ -241,7 +241,7 @@ void update_display0() {
 
 
         // Clear the flag after updating the display
-        display_update_flag = 0;
+        //display_update_flag = 0;
        
     //}
 }
