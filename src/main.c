@@ -247,10 +247,10 @@ int main() {
     adc_init();
 
     // Initialize PWM for backlight control
-    uint16_t light_level;
-    uint8_t brightness;
+    //uint16_t light_level;
+    //uint8_t brightness;
     pwm_init(BACKLIGHT_PIN); // Initialize PWM for backlight control
-    pwm_set_duty_cycle(255); // Set the initial brightness level 
+    pwm_set_duty_cycle(96); // Set the initial brightness level 
 
     char buffer_lcd[20];    
     sprintf(buffer_lcd, "Hello World");
@@ -289,15 +289,15 @@ int main() {
         previous_display_mode = current_display_mode;
 
         // Read the light level from the photoresistor (assuming it's connected to ADC channel 3)
-        light_level = adc_read(PIN_PHOTOREZISTOR); 
+        //light_level = adc_read(PIN_PHOTOREZISTOR); 
         // Map the light level to the brightness value (invert the value for dimming)
         // Assuming light level 0-1023 maps to brightness 0-255        
         // brightness = 255 - (light_level / 4);  // Invert the value for backlight control
         // Bright room (high light_level) = bright display
         // Dark room (low light_level) = dim display
-        brightness = light_level / 20;  // Direct mapping: 0-1023 -> 0-255        
+        //brightness = light_level / 20;  // Direct mapping: 0-1023 -> 0-255        
         // Set the backlight brightness
-        pwm_set_duty_cycle(brightness);
+        //pwm_set_duty_cycle(brightness);
        
 
     }
