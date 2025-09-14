@@ -123,6 +123,10 @@ void playRingtone2(void) {
     playNote(NOTE_A8, HALF);
 }
 
+void playBeep(void) {
+    playNote(NOTE_A9, SIXTEENTH);
+}
+
 // Melody 2: Classic alarm clock beep pattern
 void playAlarmBeep(void) {
     for (uint8_t i = 0; i < noteCount2; i++) {

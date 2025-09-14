@@ -39,6 +39,7 @@ void initTimer2(void);
 void playNote(uint16_t frequency, uint16_t duration);
 void playRingtone1(void);
 void playRingtone2(void);
+void playBeep(void);
 void playAlarmBeep(void);        // Classic alarm beep pattern
 void playMorningScale(void);     // Gentle ascending scale wake-up
 void playBugleCall(void);        // Military-style bugle call

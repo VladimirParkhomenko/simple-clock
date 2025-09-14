@@ -56,6 +56,9 @@ uint8_t time_hour, time_minute, time_second;
 //char buffer_calendar[20];
 uint8_t calendar_day, calendar_month, calendar_year; 
 
+//Alarm2
+uint8_t alarm2_hour, alarm2_minute;
+
 //char buffer_ds3231_temperature[8];
 int8_t ds3231_temperature;  
 
@@ -70,6 +73,7 @@ float pressure_mmHg;
 
 void update_display0(void);
 void update_display1(void);
+void check_alarm2(void);
 
 
 void init_buttons_interrupts() {
@@ -118,6 +122,7 @@ void read_datetime() {
     DS3231_getDate(&calendar_day, &calendar_month, &calendar_year);
     DS3231_getTime(&time_hour, &time_minute, &time_second);
     DS3231_getTemperature(&ds3231_temperature);
+    DS3231_getAlarm2(&alarm2_hour, &alarm2_minute);
 }
 
 uint16_t read_sensors(){     
@@ -131,9 +136,50 @@ uint16_t read_sensors(){
     return 0; // Return value to fix warning
 }
 
+void check_alarm2(void) {     
+
+    if (alarm2_hour == time_hour && alarm2_minute == time_minute) {
+        if (time_second % 15 == 0) {
+            playBeep();
+        }
+    } 
+    
+    if (alarm2_hour == time_hour && alarm2_minute + 1 == time_minute) {
+        if (time_second % 10 == 0) {
+            playBeep();
+        }
+    } 
+
+    if (alarm2_hour == time_hour && alarm2_minute + 3 == time_minute) {
+        if (time_second % 20 == 0) {
+            playRingtone2();
+        }
+    } 
+
+    if (alarm2_hour == time_hour && alarm2_minute + 6 == time_minute) {
+        if (time_second % 20 == 0) {
+            playAlarmBeep();
+        }
+    } 
+
+    if (alarm2_hour == time_hour && alarm2_minute + 10 == time_minute) {
+        if (time_second % 20 == 0) {
+            playAlarmBeep();
+        }
+    } 
+
+    if (alarm2_hour == time_hour && alarm2_minute + 12 == time_minute) {
+        if (time_second % 20 == 0) {
+            playCheerfulWake();
+        }
+    } 
+
+    
+}
+
 void update_display1() {
     // Only update the display if the flag is set
-    if (display_update_flag) {
+    //if (display_update_flag) {
 
         PORTB ^= (1 << PB5); // Toggle LED on PB5 
 
@@ -163,14 +209,14 @@ void update_display1() {
         // Clear the flag after updating the display
         display_update_flag = 0;
        
-    }
+    //}
 }
 
 
 
 void update_display0() {
     // Only update the display if the flag is set
-    if (display_update_flag) {
+    //if (display_update_flag) {
 
         PORTB ^= (1 << PB5); // Toggle LED on PB5 
 
@@ -185,18 +231,19 @@ void update_display0() {
         // sprintf(buffer_lcd, "t:%d%cC", ds3231_temperature, 0xDF);        
         // lcd_set_cursor(1, 0);        
         // lcd_print(buffer_lcd);  
-
-        read_sensors();
-        
-        sprintf(buffer_lcd, "%d.%d%c  %d.%d%c", dht22_temperature_int, dht22_temperature_dec, 0xDF, dht22_humidity_int, dht22_humidity_dec, 0x25);
-        lcd_set_cursor(1, 0);        
-        lcd_print(buffer_lcd);
+        if (time_hour >= 6 && time_hour <= 23) {
+            read_sensors();
+            
+            sprintf(buffer_lcd, "%d.%d%c  %d.%d%c", dht22_temperature_int, dht22_temperature_dec, 0xDF, dht22_humidity_int, dht22_humidity_dec, 0x25);
+            lcd_set_cursor(1, 0);        
+            lcd_print(buffer_lcd);
+        }
 
 
         // Clear the flag after updating the display
         display_update_flag = 0;
        
-    }
+    //}
 }
 
 
@@ -242,6 +289,7 @@ int main() {
 
     //DS3231_setDate(31, 8, 25);
     //DS3231_setTime(10, 52, 0);
+    DS3231_setAlarm2(7, 0);
 
     // Initialize ADC
     adc_init();
@@ -257,19 +305,17 @@ int main() {
     lcd_clear();
     lcd_set_cursor(0, 0);        
     lcd_print(buffer_lcd);
-    playRingtone2();    
+    playBeep();    
     _delay_ms(2000);  
     lcd_clear();
 
-    while (1) {      
-        
-        
+    while (1) {  
+ 
         if (button_pressed_flag) {
-            playNote(NOTE_A9, SIXTEENTH);     
+            playBeep();     
             button_pressed_flag = DEFAULT_BUTTON;  // Reset the flag       
         } 
-    
-      
+  
         uint8_t current_display_mode = (time_second % 20 < 10) ? 0 : 1;
         
         if(current_display_mode == 0) {
@@ -277,13 +323,30 @@ int main() {
             if(previous_display_mode != 0) {
                 lcd_clear_line(1); // Clear line 1 when switching to display 0
             }
-            update_display0();
+            if (display_update_flag) {
+                update_display0();
+                check_alarm2();
+                display_update_flag = 0;
+            }
+            if (time_hour >= 21 && time_hour <= 23) {
+                pwm_set_duty_cycle(64);
+            } else if ((time_hour >= 23 && time_hour <= 24) || (time_hour >= 0 && time_hour <= 6)) {
+                pwm_set_duty_cycle(0);
+            } else if ((time_hour >= 6 && time_hour <= 7)) {
+                pwm_set_duty_cycle(64);
+            } else {
+                pwm_set_duty_cycle(96);
+            }
         } else {
             // Check if we just switched to display 1
             if(previous_display_mode != 1) {
                 lcd_clear_line(1); // Clear line 1 when switching to display 1
             }
-            update_display1();
+            if (display_update_flag) {
+                update_display1();
+                check_alarm2();
+                display_update_flag = 0;
+            }            
         }
         
         previous_display_mode = current_display_mode;
