@@ -3,6 +3,9 @@
 
 #include <avr/io.h>
 
+//#define F_CPU 16000000UL
+#define SCL_CLOCK 100000L
+
 #define I2C_WRITE 0
 #define I2C_READ 1
 

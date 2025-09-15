@@ -3,7 +3,7 @@
 #include "pwm.h"
 
 void pwm_init(int8_t pin) {
-    // Set PD3 as output
+    // Set pin as output
     DDRD |= (1<<pin);
 
     // Set Fast PWM mode, non-inverting mode, and set the clock prescaler

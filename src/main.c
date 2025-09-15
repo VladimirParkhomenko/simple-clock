@@ -9,9 +9,13 @@
  */
 
 #define F_CPU 16000000UL
+
 #define UART_BAUD_RATE 9600
 #define BAUD 9600
 #define MYUBRR F_CPU/16/BAUD-1
+
+#define PRESCALER 1024
+#define TARGET_FREQ 1
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -86,9 +90,38 @@ void init_buttons_interrupts() {
 
 }
 
+/*
+The function begins by setting the WGM12 bit in the TCCR1B register, which puts Timer1 into CTC (Clear Timer on Compare Match) mode. 
+In CTC mode, the timer counts up to a specified value (set in the OCR1A register), then resets to zero and optionally triggers an interrupt.
+The prescaler value of 1024 is not a fixed constant; it is a selectable value provided by the AVR timer hardware. 
+The prescaler divides the main system clock frequency (F_CPU) to slow down the timer’s counting rate, 
+making it possible to achieve longer time intervals (like 1 second) without needing a very large compare value.
+You choose the prescaler based on your desired timer interval and the available options supported by the microcontroller (typically 1, 8, 64, 256, or 1024 for Timer1 on AVR). 
+In this code, 1024 is chosen because it allows the compare value (OCR1A) to fit within the 16-bit range of Timer1 for a 1-second interval, 
+given the system clock (either 8MHz or 16MHz). The prescaler is thus a calculated choice, balancing timer resolution, maximum interval, and hardware limits.
+
+
+OCR1A = (F_CPU / Prescaler × Target Frequency) - 1
+
+Example:
+2. 1 tick per second (1 Hz)
+   OCR1A = (16,000,000 / 1024 × 1) - 1 ≈ 15624
+
+3. 2 ticks per second (2 Hz)
+   OCR1A = (16,000,000 / 1024 × 2) - 1 ≈ 31249
+
+4. 1 ticks per second (1 HZ)
+   OCR1A = (8,000,000 / 1024 × 1) - 1 ≈ 7812
+
+5. 2 ticks per second (2 HZ)
+   OCR1A = (8,000,000 / 1024 × 2) - 1 ≈ 15624
+
+*/
 void timer1_init() {
-    TCCR1B |= (1 << WGM12); // Configure Timer1 in CTC mode
-    OCR1A = 15624; // Set the value for a 1-second interval (assuming 16MHz clock and prescaler of 1024)
+    TCCR1B |= (1 << WGM12); // Configure Timer1 in CTC mode    
+    //OCR1A = 15624; // Set the value for a 1-second interval (assuming 16MHz clock and prescaler of 1024)    
+    //OCR1A = 7812; // Set the value for a 1-second interval (assuming 8MHz clock prescaler of 1024)
+    OCR1A = (F_CPU / (PRESCALER * TARGET_FREQ)) - 1;
     TIMSK1 |= (1 << OCIE1A); // Enable Timer1 compare match interrupt
     TCCR1B |= (1 << CS12) | (1 << CS10); // Start Timer1 with prescaler of 1024
 }
