@@ -8,7 +8,7 @@
  * the screen every second to display the message again.
  */
 
-#define F_CPU 16000000UL
+#define F_CPU 8000000UL
 
 #define UART_BAUD_RATE 9600
 #define BAUD 9600
