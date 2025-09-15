@@ -4,8 +4,7 @@
 #include <util/twi.h>
 #include <util/delay.h>
 
-#define F_CPU 16000000UL
-#define SCL_CLOCK 100000L
+
 
 
 void i2c_init(void) {

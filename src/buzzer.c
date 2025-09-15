@@ -83,6 +83,12 @@ const uint8_t noteCount6 = sizeof(melody6) / sizeof(melody6[0]);
 
 volatile uint8_t timerRunning = 0;
 
+
+/*
+
+OCR2A = (F_CPU / (2 × Prescaler × Frequency)) - 1
+
+*/
 void initTimer2(void) {
     TCCR2A = (1 << WGM21);  // CTC mode
     TCCR2B = (1 << CS22);   // Prescaler 64

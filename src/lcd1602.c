@@ -18,6 +18,17 @@ static struct {
 	uint8_t led_pin;
 } lcd;
 
+
+void create_custom_chars(void) {
+    for (uint8_t i = 0; i < 8; i++) {
+        lcd_write_byte(0x40 | (i << 3), 0);  // Set CGRAM address
+        for (uint8_t j = 0; j < 8; j++) {
+            lcd_write_byte(customChars[i][j], 1);
+        }
+    }
+}
+
+
 // Digit definitions
 static const uint8_t digits[10][9] = {
     {7, 0, 7, 3, 4, 3, 6, 1, 6}, // 0
@@ -35,16 +46,6 @@ static const uint8_t digits[10][9] = {
 };
 
 
-void create_custom_chars(void) {
-    for (uint8_t i = 0; i < 8; i++) {
-        lcd_write_byte(0x40 | (i << 3), 0);  // Set CGRAM address
-        for (uint8_t j = 0; j < 8; j++) {
-            lcd_write_byte(customChars[i][j], 1);
-        }
-    }
-}
-
-
 void display_large_digit(uint8_t digit, uint8_t position) {
     if (digit > 9) return;
 
@@ -56,13 +57,11 @@ void display_large_digit(uint8_t digit, uint8_t position) {
 
     uint8_t start_col = position * 4 + shift;
     
-    for (uint8_t row = 0; row < 3; row++) {        
-        for (uint8_t col = 0; col < 3; col++) {    
-            uart_putd(digits[digit][row * 3 + col]);  
-            lcd_set_cursor(row, col + start_col);     
-            lcd_write_byte(digits[digit][row * 3  + col], 1);
-        }     
-        
+    for (uint8_t row = 0; row < 3; row++) {
+        for (uint8_t col = 0; col < 3; col++) {
+            lcd_set_cursor(row, col + start_col);
+            lcd_write_byte(digits[digit][row * 3 + col], 1);
+        }
     }
 }
 
@@ -90,6 +89,87 @@ void display_large_time(uint8_t hours, uint8_t minutes, uint8_t seconds) {
     // // Display minutes
     display_large_digit(minutes / 10, 2);
     display_large_digit(minutes % 10, 3);
+}
+
+
+// Digit definitions
+
+/*
+
+
+    // 7, 0, 7, 6, 1, 6
+    // 4, 7, 3, 4, 4, 3
+    // 5, 0, 7, 7, 2, 1
+    // 0, 2, 3, 1, 2, 3
+    // 3, 4, 3, 0, 0, 3
+    // 3, 2, 0, 1, 1, 3
+    // 7, 0, 5, 3, 2, 7
+    // 6, 0, 3, 4, 7, 0
+    // 3, 2, 3, 3, 2, 3
+    // 3, 2, 3, 7, 1, 3
+
+*/
+static const uint8_t digits2[10][6] = {
+    {7, 0, 7, 6, 1, 6}, // 0
+    {4, 7, 3, 4, 4, 3}, // 1
+    {5, 0, 7, 7, 2, 1}, // 2
+    {0, 2, 3, 1, 2, 3}, // 3
+    {3, 4, 3, 0, 0, 3}, // 4
+    {3, 2, 0, 1, 1, 3}, // 5
+    {7, 0, 5, 3, 2, 7}, // 6
+    {6, 0, 3, 4, 7, 0}, // 7
+    {3, 2, 3, 3, 2, 3}, // 8
+    {3, 2, 3, 7, 1, 3}  // 9
+
+};
+
+
+
+void display_large_digit2(uint8_t digit, uint8_t position) {
+    if (digit > 9) return;
+
+    uint8_t shift = 0;
+
+    if(position > 1) {
+        shift = 1;
+    } 
+
+    uint8_t start_col = position * 4 + shift;
+
+    for (uint8_t row = 0; row < 2; row++) {
+        for (uint8_t col = 0; col < 3; col++) {            
+            lcd_set_cursor(row, col + start_col);
+            lcd_write_byte(digits2[digit][row * 3 + col], 1);
+        }
+    }
+    
+    
+}
+
+void display_large_time2(uint8_t hours, uint8_t minutes, uint8_t seconds) {
+    // Display hours
+    display_large_digit2(hours / 10, 0);
+    display_large_digit2(hours % 10, 1);
+
+    // Display colon
+    char buffer_lcd[20];
+    if(seconds % 2 == 0) {      
+        sprintf(buffer_lcd, ".");
+        lcd_set_cursor(1, 7);        
+        lcd_print(buffer_lcd);
+        lcd_set_cursor(1, 8);
+        lcd_write_byte(4, 1);
+    } else {
+        sprintf(buffer_lcd, ".");
+        lcd_set_cursor(1, 8);        
+        lcd_print(buffer_lcd);
+        lcd_set_cursor(1, 7);
+        lcd_write_byte(4, 1);
+    }    
+
+    // // Display minutes
+    display_large_digit2(minutes / 10, 2);
+    display_large_digit2(minutes % 10, 3);
 }
 
 void putnibble(char t)
@@ -190,333 +270,596 @@ void lcd_print(const char *str)
 }
 
 
-// custom characters for the LCD
-//
+/* Custom Digits for LCD1604 */
+/*
 // 0 ---------------------------------------
-// // 0 line 1
-// lcd_set_cursor(0, 0);
-// lcd_write_byte(7, 1);
-
-// lcd_set_cursor(0, 1);
-// lcd_write_byte(0, 1);
-
-// lcd_set_cursor(0, 2);
-// lcd_write_byte(7, 1);
-
-//  // 0 line 2
-// lcd_set_cursor(1, 0);
-// lcd_write_byte(3, 1);
-
-// lcd_set_cursor(1, 1);
-// lcd_write_byte(4, 1);
-
-// lcd_set_cursor(1, 2);
-// lcd_write_byte(3, 1);
-
-// // 0 line 3
-// lcd_set_cursor(2, 0);
-// lcd_write_byte(6, 1);
-
-// lcd_set_cursor(2, 1);
-// lcd_write_byte(1, 1);
-
-// lcd_set_cursor(2, 2);
-// lcd_write_byte(6, 1);
-
-// 1 ------------------------------------------------------
-//  line 1
-// lcd_set_cursor(0, 0);
-// lcd_write_byte(4, 1);
-
-// lcd_set_cursor(0, 1);
-// lcd_write_byte(7, 1);
-
-// lcd_set_cursor(0, 2);
-// lcd_write_byte(3, 1);
-
-//  // line 2
-// lcd_set_cursor(1, 0);
-// lcd_write_byte(0, 1);
-
-// lcd_set_cursor(1, 1);
-// lcd_write_byte(4, 1);
-
-// lcd_set_cursor(1, 2);
-// lcd_write_byte(3, 1);
-
-// // line 3
-// lcd_set_cursor(2, 0);
-// lcd_write_byte(4, 1);
-
-// lcd_set_cursor(2, 1);
-// lcd_write_byte(4, 1);
-
-// lcd_set_cursor(2, 2);
-// lcd_write_byte(3, 1);
-
-// 4, 7, 3, 0, 4, 3, 4, 4, 3
-
-// 2 ------------------------------------------------------
 // line 1
-// lcd_set_cursor(0, 0);
-// lcd_write_byte(5, 1);
+lcd_set_cursor(0, 0);
+lcd_write_byte(7, 1);
 
-// lcd_set_cursor(0, 1);
-// lcd_write_byte(0, 1);
+lcd_set_cursor(0, 1);
+lcd_write_byte(0, 1);
 
-// lcd_set_cursor(0, 2);
-// lcd_write_byte(7, 1);
+lcd_set_cursor(0, 2);
+lcd_write_byte(7, 1);
 
-// // line 2
-// lcd_set_cursor(1, 0);
-// lcd_write_byte(4, 1);
+ // 0 line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(3, 1);
 
-// lcd_set_cursor(1, 1);
-// lcd_write_byte(7, 1);
+lcd_set_cursor(1, 1);
+lcd_write_byte(4, 1);
 
-// lcd_set_cursor(1, 2);
-// lcd_write_byte(0, 1);
+lcd_set_cursor(1, 2);
+lcd_write_byte(3, 1);
 
-// // line 3
-// lcd_set_cursor(2, 0);
-// lcd_write_byte(3, 1);
+// 0 line 3
+lcd_set_cursor(2, 0);
+lcd_write_byte(6, 1);
 
-// lcd_set_cursor(2, 1);
-// lcd_write_byte(1, 1);
+lcd_set_cursor(2, 1);
+lcd_write_byte(1, 1);
 
-// lcd_set_cursor(2, 2);
-// lcd_write_byte(7, 1);
+lcd_set_cursor(2, 2);
+lcd_write_byte(6, 1);
 
-// 5, 0, 7, 4, 7, 0, 3, 1, 7
+1 ------------------------------------------------------
+ line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(4, 1);
 
-// 3 ------------------------------------------------------
+lcd_set_cursor(0, 1);
+lcd_write_byte(7, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(3, 1);
+
+ // line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(0, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(3, 1);
+
+// line 3
+lcd_set_cursor(2, 0);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(2, 1);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(2, 2);
+lcd_write_byte(3, 1);
+
+4, 7, 3, 0, 4, 3, 4, 4, 3
+
+2 ------------------------------------------------------
+line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(5, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(0, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(7, 1);
+
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(7, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(0, 1);
+
+// line 3
+lcd_set_cursor(2, 0);
+lcd_write_byte(3, 1);
+
+lcd_set_cursor(2, 1);
+lcd_write_byte(1, 1);
+
+lcd_set_cursor(2, 2);
+lcd_write_byte(7, 1);
+
+5, 0, 7, 4, 7, 0, 3, 1, 7
+
+3 ------------------------------------------------------
+line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(7, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(0, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(7, 1);
+
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(5, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(2, 1);
+
+// line 3
+lcd_set_cursor(2, 0);
+lcd_write_byte(6, 1);
+
+lcd_set_cursor(2, 1);
+lcd_write_byte(1, 1);
+
+lcd_set_cursor(2, 2);
+lcd_write_byte(6, 1);
+
+7, 0, 7, 4, 5, 2, 6, 1, 6
+
+4 ------------------------------------------------------
+line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(3, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(3, 1);
+
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(6, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(5, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(3, 1);
+
+// line 3
+lcd_set_cursor(2, 0);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(2, 1);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(2, 2);
+lcd_write_byte(3, 1);
+
+3, 4, 3, 6, 5, 3, 4, 4, 3
+
+// 5 ------------------------------------------------------
 // line 1
-// lcd_set_cursor(0, 0);
-// lcd_write_byte(7, 1);
+lcd_set_cursor(0, 0);
+lcd_write_byte(3, 1);
 
-// lcd_set_cursor(0, 1);
-// lcd_write_byte(0, 1);
+lcd_set_cursor(0, 1);
+lcd_write_byte(0, 1);
 
-// lcd_set_cursor(0, 2);
-// lcd_write_byte(7, 1);
+lcd_set_cursor(0, 2);
+lcd_write_byte(6, 1);
 
-// // line 2
-// lcd_set_cursor(1, 0);
-// lcd_write_byte(4, 1);
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(4, 1);
 
-// lcd_set_cursor(1, 1);
-// lcd_write_byte(5, 1);
+lcd_set_cursor(1, 1);
+lcd_write_byte(6, 1);
 
-// lcd_set_cursor(1, 2);
-// lcd_write_byte(2, 1);
+lcd_set_cursor(1, 2);
+lcd_write_byte(1, 1);
 
-// // line 3
-// lcd_set_cursor(2, 0);
-// lcd_write_byte(6, 1);
+// line 3
+lcd_set_cursor(2, 0);
+lcd_write_byte(5, 1);
 
-// lcd_set_cursor(2, 1);
-// lcd_write_byte(1, 1);
+lcd_set_cursor(2, 1);
+lcd_write_byte(1, 1);
 
-// lcd_set_cursor(2, 2);
-// lcd_write_byte(6, 1);
+lcd_set_cursor(2, 2);
+lcd_write_byte(6, 1);
 
-// 7, 0, 7, 4, 5, 2, 6, 1, 6
+3, 0, 6, 4, 6, 1, 5, 1, 6
 
-// 4 ------------------------------------------------------
+// 6 ------------------------------------------------------
 // line 1
-// lcd_set_cursor(0, 0);
-// lcd_write_byte(3, 1);
+lcd_set_cursor(0, 0);
+lcd_write_byte(7, 1);
 
-// lcd_set_cursor(0, 1);
-// lcd_write_byte(4, 1);
+lcd_set_cursor(0, 1);
+lcd_write_byte(0, 1);
 
-// lcd_set_cursor(0, 2);
-// lcd_write_byte(3, 1);
+lcd_set_cursor(0, 2);
+lcd_write_byte(5, 1);
 
-// // line 2
-// lcd_set_cursor(1, 0);
-// lcd_write_byte(6, 1);
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(3, 1);
 
-// lcd_set_cursor(1, 1);
-// lcd_write_byte(5, 1);
+lcd_set_cursor(1, 1);
+lcd_write_byte(5, 1);
 
-// lcd_set_cursor(1, 2);
-// lcd_write_byte(3, 1);
+lcd_set_cursor(1, 2);
+lcd_write_byte(1, 1);
 
-// // line 3
-// lcd_set_cursor(2, 0);
-// lcd_write_byte(4, 1);
+// line 3
+lcd_set_cursor(2, 0);
+lcd_write_byte(6, 1);
 
-// lcd_set_cursor(2, 1);
-// lcd_write_byte(4, 1);
+lcd_set_cursor(2, 1);
+lcd_write_byte(1, 1);
 
-// lcd_set_cursor(2, 2);
-// lcd_write_byte(3, 1);
+lcd_set_cursor(2, 2);
+lcd_write_byte(6, 1);
 
-// 3, 4, 3, 6, 5, 3, 4, 4, 3
+7, 0, 5, 3, 5, 1, 6, 1, 6
 
-// // 5 ------------------------------------------------------
-// // line 1
-// lcd_set_cursor(0, 0);
-// lcd_write_byte(3, 1);
+7 ------------------------------------------------------
+line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(6, 1);
 
-// lcd_set_cursor(0, 1);
-// lcd_write_byte(0, 1);
+lcd_set_cursor(0, 1);
+lcd_write_byte(0, 1);
 
-// lcd_set_cursor(0, 2);
-// lcd_write_byte(6, 1);
+lcd_set_cursor(0, 2);
+lcd_write_byte(3, 1);
 
-// // line 2
-// lcd_set_cursor(1, 0);
-// lcd_write_byte(4, 1);
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(4, 1);
 
-// lcd_set_cursor(1, 1);
-// lcd_write_byte(6, 1);
+lcd_set_cursor(1, 1);
+lcd_write_byte(7, 1);
 
-// lcd_set_cursor(1, 2);
-// lcd_write_byte(1, 1);
+lcd_set_cursor(1, 2);
+lcd_write_byte(0, 1);
 
-// // line 3
-// lcd_set_cursor(2, 0);
-// lcd_write_byte(5, 1);
+// line 3
+lcd_set_cursor(2, 0);
+lcd_write_byte(4, 1);
 
-// lcd_set_cursor(2, 1);
-// lcd_write_byte(1, 1);
+lcd_set_cursor(2, 1);
+lcd_write_byte(3, 1);
 
-// lcd_set_cursor(2, 2);
-// lcd_write_byte(6, 1);
+lcd_set_cursor(2, 2);
+lcd_write_byte(4, 1);
 
-// 3, 0, 6, 4, 6, 1, 5, 1, 6
+6, 0, 3, 4, 7, 0, 4, 3, 4
 
-// // 6 ------------------------------------------------------
-// // line 1
-// lcd_set_cursor(0, 0);
-// lcd_write_byte(7, 1);
+8 ------------------------------------------------------
+line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(7, 1);
 
-// lcd_set_cursor(0, 1);
-// lcd_write_byte(0, 1);
+lcd_set_cursor(0, 1);
+lcd_write_byte(0, 1);
 
-// lcd_set_cursor(0, 2);
-// lcd_write_byte(5, 1);
+lcd_set_cursor(0, 2);
+lcd_write_byte(7, 1);
 
-// // line 2
-// lcd_set_cursor(1, 0);
-// lcd_write_byte(3, 1);
+ // line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(3, 1);
 
-// lcd_set_cursor(1, 1);
-// lcd_write_byte(5, 1);
+lcd_set_cursor(1, 1);
+lcd_write_byte(5, 1);
 
-// lcd_set_cursor(1, 2);
-// lcd_write_byte(1, 1);
+lcd_set_cursor(1, 2);
+lcd_write_byte(3, 1);
 
-// // line 3
-// lcd_set_cursor(2, 0);
-// lcd_write_byte(6, 1);
+// line 3
+lcd_set_cursor(2, 0);
+lcd_write_byte(6, 1);
 
-// lcd_set_cursor(2, 1);
-// lcd_write_byte(1, 1);
+lcd_set_cursor(2, 1);
+lcd_write_byte(1, 1);
 
-// lcd_set_cursor(2, 2);
-// lcd_write_byte(6, 1);
+lcd_set_cursor(2, 2);
+lcd_write_byte(6, 1);
 
-// 7, 0, 5, 3, 5, 1, 6, 1, 6
-
-// 7 ------------------------------------------------------
-// line 1
-// lcd_set_cursor(0, 0);
-// lcd_write_byte(6, 1);
-
-// lcd_set_cursor(0, 1);
-// lcd_write_byte(0, 1);
-
-// lcd_set_cursor(0, 2);
-// lcd_write_byte(3, 1);
-
-// // line 2
-// lcd_set_cursor(1, 0);
-// lcd_write_byte(4, 1);
-
-// lcd_set_cursor(1, 1);
-// lcd_write_byte(7, 1);
-
-// lcd_set_cursor(1, 2);
-// lcd_write_byte(0, 1);
-
-// // line 3
-// lcd_set_cursor(2, 0);
-// lcd_write_byte(4, 1);
-
-// lcd_set_cursor(2, 1);
-// lcd_write_byte(3, 1);
-
-// lcd_set_cursor(2, 2);
-// lcd_write_byte(4, 1);
-
-// 6, 0, 3, 4, 7, 0, 4, 3, 4
-
-// 8 ------------------------------------------------------
-// line 1
-// lcd_set_cursor(0, 0);
-// lcd_write_byte(7, 1);
-
-// lcd_set_cursor(0, 1);
-// lcd_write_byte(0, 1);
-
-// lcd_set_cursor(0, 2);
-// lcd_write_byte(7, 1);
-
-//  // line 2
-// lcd_set_cursor(1, 0);
-// lcd_write_byte(3, 1);
-
-// lcd_set_cursor(1, 1);
-// lcd_write_byte(5, 1);
-
-// lcd_set_cursor(1, 2);
-// lcd_write_byte(3, 1);
-
-// // line 3
-// lcd_set_cursor(2, 0);
-// lcd_write_byte(6, 1);
-
-// lcd_set_cursor(2, 1);
-// lcd_write_byte(1, 1);
-
-// lcd_set_cursor(2, 2);
-// lcd_write_byte(6, 1);
-
-// 7, 0, 7, 3, 5, 3, 6, 1, 6
+7, 0, 7, 3, 5, 3, 6, 1, 6
 
 
-// 9 ------------------------------------------------------
-// line 1
-// lcd_set_cursor(0, 0);
-// lcd_write_byte(7, 1);
+9 ------------------------------------------------------
+line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(7, 1);
 
-// lcd_set_cursor(0, 1);
-// lcd_write_byte(0, 1);
+lcd_set_cursor(0, 1);
+lcd_write_byte(0, 1);
 
-// lcd_set_cursor(0, 2);
-// lcd_write_byte(7, 1);
+lcd_set_cursor(0, 2);
+lcd_write_byte(7, 1);
 
-//  // line 2
-// lcd_set_cursor(6, 0);
-// lcd_write_byte(0, 1);
+ // line 2
+lcd_set_cursor(6, 0);
+lcd_write_byte(0, 1);
 
-// lcd_set_cursor(1, 1);
-// lcd_write_byte(5, 1);
+lcd_set_cursor(1, 1);
+lcd_write_byte(5, 1);
 
-// lcd_set_cursor(1, 2);
-// lcd_write_byte(3, 1);
+lcd_set_cursor(1, 2);
+lcd_write_byte(3, 1);
 
-// // line 3
-// lcd_set_cursor(2, 0);
-// lcd_write_byte(5, 1);
+// line 3
+lcd_set_cursor(2, 0);
+lcd_write_byte(5, 1);
 
-// lcd_set_cursor(2, 1);
-// lcd_write_byte(1, 1);
+lcd_set_cursor(2, 1);
+lcd_write_byte(1, 1);
 
-// lcd_set_cursor(2, 2);
-// lcd_write_byte(6, 1);
+lcd_set_cursor(2, 2);
+lcd_write_byte(6, 1);
 
 // 7, 0, 7, 0, 5, 3, 5, 1, 6
+
+*/
+
+
+/* Custom Digits for LCD1602 */
+
+
+/*
+// 0 ----------------
+// line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(7, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(0, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(7, 1);
+
+// 0 line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(6, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(1, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(6, 1);
+
+// 7, 0, 7, 6, 1, 6
+
+
+_delay_ms(1000);  
+playBeep();  
+lcd_clear();
+
+// 1 -----------------
+// line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(7, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(3, 1);
+
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(3, 1);
+
+// 4, 7, 3, 4, 4, 3
+
+_delay_ms(1000);  
+playBeep();  
+lcd_clear();
+
+// 2 ----------------
+// line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(5, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(0, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(7, 1);
+
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(7, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(2, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(1, 1);
+
+// 5, 0, 7, 7, 2, 1
+
+_delay_ms(1000); 
+playBeep();   
+lcd_clear();
+
+// 3 -----------------
+// line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(0, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(2, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(3, 1);
+
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(1, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(2, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(3, 1);
+
+
+_delay_ms(1000);
+playBeep();  
+lcd_clear();
+
+// 4 -----------------
+// line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(3, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(3, 1);
+
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(0, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(0, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(3, 1);
+
+_delay_ms(1000);
+playBeep();  
+lcd_clear();
+
+// 5 -----------------
+// line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(3, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(2, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(0, 1);
+
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(1, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(1, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(3, 1);
+
+_delay_ms(1000);
+playBeep();  
+lcd_clear();
+
+// 6 ----------------
+// line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(7, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(0, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(5, 1);
+
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(3, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(2, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(7, 1);
+
+_delay_ms(1000);  
+playBeep();  
+lcd_clear();
+
+// 7 ------------------
+//line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(6, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(0, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(3, 1);
+
+// line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(4, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(7, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(0, 1);
+
+_delay_ms(1000);
+playBeep();  
+lcd_clear();
+
+// 8 -----------------
+// line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(3, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(2, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(3, 1);
+
+    // line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(3, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(2, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(3, 1);
+
+_delay_ms(1000);
+playBeep();  
+lcd_clear();
+
+// 9 ------------------
+// line 1
+lcd_set_cursor(0, 0);
+lcd_write_byte(3, 1);
+
+lcd_set_cursor(0, 1);
+lcd_write_byte(2, 1);
+
+lcd_set_cursor(0, 2);
+lcd_write_byte(3, 1);
+
+    // line 2
+lcd_set_cursor(1, 0);
+lcd_write_byte(7, 1);
+
+lcd_set_cursor(1, 1);
+lcd_write_byte(1, 1);
+
+lcd_set_cursor(1, 2);
+lcd_write_byte(3, 1);
+
+*/

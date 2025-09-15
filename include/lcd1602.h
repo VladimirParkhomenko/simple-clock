@@ -88,6 +88,9 @@ void create_custom_chars(void);
 void display_large_digit(uint8_t digit, uint8_t position);
 void display_large_time(uint8_t hours, uint8_t minutes, uint8_t seconds);
 
+void display_large_digit2(uint8_t digit, uint8_t position);
+void display_large_time2(uint8_t hours, uint8_t minutes, uint8_t seconds);
+
 
 #endif
 
