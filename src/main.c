@@ -24,7 +24,7 @@
 #include <avr/interrupt.h>
 #include <stdlib.h>
 
-#include "uart.h"
+//#include "uart.h"
 #include "i2c.h"
 #include "lcd1602.h"
 #include "ds3231.h"
@@ -211,72 +211,51 @@ void check_alarm2(void) {
 }
 
 void update_display1() {
-    // Only update the display if the flag is set
-    //if (display_update_flag) {
+    //PORTB ^= (1 << PB5); // Toggle LED on PB5 
 
-        PORTB ^= (1 << PB5); // Toggle LED on PB5 
-
-        char buffer_lcd[20];
-        char buffer_float[8];   
-
-        read_datetime(); // Read the date and time from the DS3231         
-
-        sprintf(buffer_lcd, "%02d:%02d:%02d  %02d/%02d", time_hour, time_minute, time_second, calendar_day, calendar_month);        
-        lcd_set_cursor(0, 0);        
-        lcd_print(buffer_lcd);    
-
-         if (time_hour >= 6 && time_hour <= 23) {
-            read_sensors(); //TODO  - Add night mode. No read sensor  
+    char buffer_lcd[20];
+    char buffer_float[8];  
     
-            dtostrf(bmp180_temperature, 2, 1, buffer_float);   
-            sprintf(buffer_lcd, "%s%c", buffer_float, 0xDF);      
-            lcd_set_cursor(1, 0);        
-            lcd_print(buffer_lcd);
+    read_datetime(); // Read the date and time from the DS3231
 
-            dtostrf(pressure_mmHg, 3, 1, buffer_float);   
-            sprintf(buffer_lcd, "%smmHg", buffer_float); 
-            lcd_set_cursor(1, 7);
-            lcd_print(buffer_lcd);
-         }    
 
-        // Clear the flag after updating the display
-        //display_update_flag = 0;
-       
-    //}
+    sprintf(buffer_lcd, "%02d:%02d:%02d", time_hour, time_minute, time_second);
+    lcd_set_cursor(0, 0);        
+    lcd_print(buffer_lcd);
+
+    sprintf(buffer_lcd, "%02d/%02d",  calendar_day, calendar_month);
+    lcd_set_cursor(1, 0);        
+    lcd_print(buffer_lcd);
+
+    if (time_hour >= 6 && time_hour <= 23) {
+        read_sensors(); // Read DHT22 and BMP180 sensors
+
+
+
+        dtostrf(bmp180_temperature, 2, 1, buffer_float);   
+        sprintf(buffer_lcd, "%s%c", buffer_float, 0xDF);      
+        lcd_set_cursor(1, 6);        
+        lcd_print(buffer_lcd);
+
+        sprintf(buffer_lcd, "%d.%d%c", dht22_humidity_int, dht22_humidity_dec, 0x25);
+        lcd_set_cursor(1, 11);        
+        lcd_print(buffer_lcd);
+
+        dtostrf(pressure_mmHg, 3, 0, buffer_float);   
+        sprintf(buffer_lcd, "%smmHg", buffer_float); 
+        lcd_set_cursor(0, 9);
+        lcd_print(buffer_lcd);       
+        
+        
+    }
 }
 
 
-
 void update_display0() {
-    // Only update the display if the flag is set
-    //if (display_update_flag) {
+    //PORTB ^= (1 << PB5); // Toggle LED on PB5
+    read_datetime(); // Read the date and time from the DS3231 
 
-        PORTB ^= (1 << PB5); // Toggle LED on PB5 
-
-        char buffer_lcd[20];   
-
-        read_datetime(); // Read the date and time from the DS3231         
-
-        sprintf(buffer_lcd, "%02d:%02d:%02d  %02d/%02d", time_hour, time_minute, time_second, calendar_day, calendar_month);        
-        lcd_set_cursor(0, 0);        
-        lcd_print(buffer_lcd);  
-        
-        // sprintf(buffer_lcd, "t:%d%cC", ds3231_temperature, 0xDF);        
-        // lcd_set_cursor(1, 0);        
-        // lcd_print(buffer_lcd);  
-        if (time_hour >= 6 && time_hour <= 23) {
-            read_sensors();
-            
-            sprintf(buffer_lcd, "%d.%d%c  %d.%d%c", dht22_temperature_int, dht22_temperature_dec, 0xDF, dht22_humidity_int, dht22_humidity_dec, 0x25);
-            lcd_set_cursor(1, 0);        
-            lcd_print(buffer_lcd);
-        }
-
-
-        // Clear the flag after updating the display
-        //display_update_flag = 0;
-       
-    //}
+    display_large_time2(time_hour, time_minute, time_second); // Display the time
 }
 
 
@@ -287,21 +266,14 @@ int main() {
     DDRB |= (1 << PB5); // Set PB5 (pin 13) as output    
 
     // Initialize UART
-    uart_init(UART_BAUD_SELECT(UART_BAUD_RATE, F_CPU));
+    //uart_init(UART_BAUD_SELECT(UART_BAUD_RATE, F_CPU));
 
     // Enable global interrupts
     sei();   
 
     // Initialize I2C
-    i2c_init();  
-
-    
-    // Initialize DS3231
-    DS3231_init();  
-   
-
-    // Initialize bmp180
-    BMP180_init();   
+    i2c_init();   
+     
 
     // Initialize Timer1 for 1-second interrupts
     timer1_init();  
@@ -313,9 +285,17 @@ int main() {
     // Initialize LCD
     lcd_init();    
     //lcd_clear(); 
-    
+    create_custom_chars();
+
     //uart_puts("UART initialized \n");  
     // Main loop   
+
+     // Initialize DS3231
+    DS3231_init();  
+   
+
+    // Initialize bmp180
+    BMP180_init(); 
 
     // Initialize buttons with interrupts
     init_buttons_interrupts();
@@ -337,24 +317,40 @@ int main() {
     sprintf(buffer_lcd, "Hello World");
     lcd_clear();
     lcd_set_cursor(0, 0);        
-    lcd_print(buffer_lcd);
-    playBeep();    
-    _delay_ms(2000);  
+    lcd_print(buffer_lcd);     
+    _delay_ms(1000);
     lcd_clear();
 
+    for (int i = 0; i < 10; i++) {
+        _delay_ms(1000);
+        playBeep();
+        display_large_digit2(i, 0);
+    }
+
+    _delay_ms(1000);
+
     while (1) {  
+
+        
  
         if (button_pressed_flag) {
             playBeep();     
             button_pressed_flag = DEFAULT_BUTTON;  // Reset the flag       
         } 
-  
-        uint8_t current_display_mode = (time_second % 20 < 10) ? 0 : 1;
+        
+        // Determine the current display mode based on the seconds
+        // Change display every 10 seconds
+        // uint8_t current_display_mode = (time_second % 20 < 10) ? 0 : 1;
+        // 0 → for 0–39 seconds (40 seconds)
+        // 1 → for 40–59 seconds (20 seconds)
+        uint8_t current_display_mode = (time_second % 60 < 40) ? 0 : 1;
+
         
         if(current_display_mode == 0) {
             // Check if we just switched to display 0
             if(previous_display_mode != 0) {
-                lcd_clear_line(1); // Clear line 1 when switching to display 0
+                //lcd_clear_line(1); // Clear line 1 when switching to display 0
+                lcd_clear();
             }
             if (display_update_flag) {
                 update_display0();
@@ -373,7 +369,8 @@ int main() {
         } else {
             // Check if we just switched to display 1
             if(previous_display_mode != 1) {
-                lcd_clear_line(1); // Clear line 1 when switching to display 1
+                //lcd_clear_line(1); // Clear line 1 when switching to display 1
+                lcd_clear();
             }
             if (display_update_flag) {
                 update_display1();
@@ -383,6 +380,8 @@ int main() {
         }
         
         previous_display_mode = current_display_mode;
+
+        
 
         // Read the light level from the photoresistor (assuming it's connected to ADC channel 3)
         //light_level = adc_read(PIN_PHOTOREZISTOR); 

@@ -5,7 +5,7 @@
 #include "i2c.h"
 #include "ds3231.h"
 
-#include "uart.h"
+//#include "uart.h"
 
 
 void DS3231_init(void) {
@@ -19,7 +19,7 @@ void DS3231_init(void) {
 void DS3231_getTime(uint8_t* hour, uint8_t* minute, uint8_t* second) {
     //uart_puts("Starting I2C write for time retrieval...\n");
     if (i2c_start((DS3231_ADDRESS << 1) | I2C_WRITE)) {
-        uart_puts("I2C start for write failed!\n");
+        //uart_puts("I2C start for write failed!\n");
         return;
     }
     //uart_puts("I2C start for write successful...\n");
@@ -29,7 +29,7 @@ void DS3231_getTime(uint8_t* hour, uint8_t* minute, uint8_t* second) {
 
     //uart_puts("Starting I2C read for time retrieval...\n");
     if (i2c_start((DS3231_ADDRESS << 1) | I2C_READ)) {
-        uart_puts("I2C start for read failed!\n");
+        //uart_puts("I2C start for read failed!\n");
         return;
     }
     //uart_puts("I2C start for read successful...\n");
@@ -66,7 +66,7 @@ void DS3231_getDate(uint8_t* day, uint8_t* month, uint8_t* year) {
     //uart_puts("Getting date from DS3231...\n");
     
     if (i2c_start((DS3231_ADDRESS << 1) | I2C_WRITE)) {
-        uart_puts("I2C start for write failed!\n");
+        //uart_puts("I2C start for write failed!\n");
         return;
     }
     
@@ -74,7 +74,7 @@ void DS3231_getDate(uint8_t* day, uint8_t* month, uint8_t* year) {
     //uart_puts("Register pointer set to date registers...\n");
     
     if (i2c_start((DS3231_ADDRESS << 1) | I2C_READ)) {
-        uart_puts("I2C start for read failed!\n");
+        //uart_puts("I2C start for read failed!\n");
         return;
     }
     //uart_puts("I2C start for read successful...\n");
@@ -97,7 +97,7 @@ void DS3231_setDate(uint8_t day, uint8_t month, uint8_t year) {
     //uart_puts("Setting date on DS3231...\n");
 
     if (i2c_start((DS3231_ADDRESS << 1) | I2C_WRITE)) {
-        uart_puts("I2C start for write failed!\n");
+        //uart_puts("I2C start for write failed!\n");
         return;
     }
     
@@ -147,7 +147,7 @@ void DS3231_setAlarm2(uint8_t hour, uint8_t minute) {
 void DS3231_getAlarm1(uint8_t* hour, uint8_t* minute, uint8_t* second) {
     //uart_puts("Starting I2C write for alarm 1 retrieval...\n");
     if (i2c_start((DS3231_ADDRESS << 1) | I2C_WRITE)) {
-        uart_puts("I2C start for write failed!\n");
+        //uart_puts("I2C start for write failed!\n");
         return;
     }
     //uart_puts("I2C start for write successful...\n");
@@ -157,7 +157,7 @@ void DS3231_getAlarm1(uint8_t* hour, uint8_t* minute, uint8_t* second) {
 
     //uart_puts("Starting I2C read for alarm 1 retrieval...\n");
     if (i2c_start((DS3231_ADDRESS << 1) | I2C_READ)) {
-        uart_puts("I2C start for read failed!\n");
+        //uart_puts("I2C start for read failed!\n");
         return;
     }
     //uart_puts("I2C start for read successful...\n");
@@ -176,7 +176,7 @@ void DS3231_getAlarm1(uint8_t* hour, uint8_t* minute, uint8_t* second) {
 void DS3231_getAlarm2(uint8_t* hour, uint8_t* minute) {
     //uart_puts("Starting I2C write for alarm 2 retrieval...\n");
     if (i2c_start((DS3231_ADDRESS << 1) | I2C_WRITE)) {
-        uart_puts("I2C start for write failed!\n");
+        //uart_puts("I2C start for write failed!\n");
         return;
     }
     //uart_puts("I2C start for write successful...\n");
@@ -186,7 +186,7 @@ void DS3231_getAlarm2(uint8_t* hour, uint8_t* minute) {
 
     //uart_puts("Starting I2C read for alarm 2 retrieval...\n");
     if (i2c_start((DS3231_ADDRESS << 1) | I2C_READ)) {
-        uart_puts("I2C start for read failed!\n");
+        //uart_puts("I2C start for read failed!\n");
         return;
     }
     //uart_puts("I2C start for read successful...\n");
