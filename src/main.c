@@ -215,8 +215,8 @@ void check_alarm2() {
     } 
 
     if (alarm2_hour == time_hour && alarm2_minute + 12 == time_minute) {
-        if (time_second % 20 == 0) {
-            playCheerfulWake();
+        if (time_second % 15 == 0) {
+            playAlarmBeep();
         }
     } 
 
@@ -330,6 +330,8 @@ int main() {
     _delay_ms(1000);
 
     while (1) {  
+
+        wdt_reset(); // Reset the watchdog timer
 
         // Determine the current display mode based on the seconds
         // Change display every 10 seconds
