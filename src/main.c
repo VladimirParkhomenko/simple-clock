@@ -214,6 +214,8 @@ void check_alarm2() {
         }
     } 
 
+    wdt_reset(); // Reset the watchdog timer
+
     if (alarm2_hour == time_hour && alarm2_minute + 12 == time_minute) {
         if (time_second % 15 == 0) {
             playAlarmBeep();
@@ -322,7 +324,7 @@ int main() {
     lcd_clear();
 
     for (int i = 0; i < 10; i++) {
-        _delay_ms(500);
+        _delay_ms(400);
         playBeep();
         display_large_digit2(i, 0);
     }
