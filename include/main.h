@@ -23,6 +23,7 @@ void read_sensors(void);
 void check_alarm2(void);
 void update_display0(void);
 void update_display1(void);
+void hello_world(int8_t mode);
 
 
 

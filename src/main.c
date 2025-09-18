@@ -261,9 +261,60 @@ void update_display1() {
 }
 
 void update_display0() {
-    //PORTB ^= (1 << PB5); // Toggle LED on PB5
-    
+    //PORTB ^= (1 << PB5); // Toggle LED on PB5    
     display_large_time2(time_hour, time_minute, time_second); // Display the time
+}
+
+void hello_world(int8_t mode) {
+    char buffer_lcd[20];
+    lcd_clear();
+    sprintf(buffer_lcd, "Hello World");
+    lcd_set_cursor(0, 0);
+    lcd_print(buffer_lcd);
+    _delay_ms(500);
+    lcd_clear();
+
+    switch (mode)
+    {
+    case 0:
+        for (int i = 0; i < 10; i++) {        
+            playBeep();
+            display_large_digit2(i, 0); // Display the digit in the center 
+            _delay_ms(400);
+        }
+        break;
+    case 1:
+        for (int i = 3; i >= 0; i--) {        
+            playBeep();
+            display_large_digit2(i, 0); // Display the digit in the center 
+            _delay_ms(400);
+        }
+        break;
+    case 2:
+        for (int i = 10; i >= 0; i--) {            
+            for (int j = 0; j < 4; j++) {         
+                //lcd_clear();
+                display_large_digit2(i, j); // Display the digit in the center 
+                _delay_ms(100);
+            }
+            playBeep();
+            _delay_ms(400);
+            lcd_clear();
+        }
+        break;
+    case 3:
+        for (int i = 3; i >= 0; i--) {  
+            playBeep();               
+            lcd_clear();
+            display_large_digit2(i, i); // Display the digit in the center 
+            _delay_ms(400);           
+        }
+        break;
+    default:
+        break;
+    }
+
+   lcd_clear();
 }
 
 
@@ -318,21 +369,9 @@ int main() {
     //uint16_t light_level;
     //uint8_t brightness;
     pwm_init(BACKLIGHT_PIN); // Initialize PWM for backlight control
-    pwm_set_duty_cycle(96); // Set the initial brightness level 
-
-    char buffer_lcd[20];    
-    sprintf(buffer_lcd, "Hello World");
-    lcd_clear();
-    lcd_set_cursor(0, 0);
-    lcd_print(buffer_lcd);
-    _delay_ms(500);
-    lcd_clear();
-
-    for (int i = 0; i < 10; i++) {
-        _delay_ms(400);
-        playBeep();
-        display_large_digit2(i, 0);
-    }
+    pwm_set_duty_cycle(96); // Set the initial brightness level     
+    
+    hello_world(2);
 
     _delay_ms(1000);
 
