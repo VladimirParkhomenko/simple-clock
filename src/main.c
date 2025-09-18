@@ -182,47 +182,49 @@ void read_sensors(){
     pressure_mmHg = bmp180_pressure * 0.75006; // Convert hPa to mmHg
 }
 
-void check_alarm2() {     
-
-    if (alarm2_hour == time_hour && alarm2_minute == time_minute) {
-        if (time_second % 15 == 0) {
-            playBeep();
-        }
-    } 
+void check_alarm2() {   
     
-    if (alarm2_hour == time_hour && alarm2_minute + 1 == time_minute) {
-        if (time_second % 10 == 0) {
-            playBeep();
+    if (alarm2_hour == time_hour){    
+
+        wdt_reset(); // Reset the watchdog timer
+
+        if (alarm2_minute == time_minute) {
+            if (time_second % 15 == 0) {
+                playBeep();
+            }
         }
-    } 
 
-    if (alarm2_hour == time_hour && alarm2_minute + 3 == time_minute) {
-        if (time_second % 20 == 0) {
-            playRingtone2();
-        }
-    } 
+        if (alarm2_minute + 1 == time_minute) {
+            if (time_second % 10 == 0) {
+                playBeep();
+            }
+        } 
 
-    if (alarm2_hour == time_hour && alarm2_minute + 6 == time_minute) {
-        if (time_second % 20 == 0) {
-            playAlarmBeep();
-        }
-    } 
+        if (alarm2_minute + 3 == time_minute) {
+            if (time_second % 20 == 0) {
+                playRingtone2();
+            }
+        } 
 
-    if (alarm2_hour == time_hour && alarm2_minute + 10 == time_minute) {
-        if (time_second % 20 == 0) {
-            playAlarmBeep();
-        }
-    } 
+        if (alarm2_minute + 6 == time_minute) {
+            if (time_second % 20 == 0) {
+                playAlarmBeep();
+            }
+        } 
 
-    wdt_reset(); // Reset the watchdog timer
+        if (alarm2_minute + 10 == time_minute) {
+            if (time_second % 20 == 0) {
+                playAlarmBeep();
+            }
+        }         
 
-    if (alarm2_hour == time_hour && alarm2_minute + 12 == time_minute) {
-        if (time_second % 15 == 0) {
-            playAlarmBeep();
-        }
-    } 
+        if (alarm2_minute + 12 == time_minute) {
+            if (time_second % 15 == 0) {
+                playAlarmBeep();
+            }
+        } 
 
-    
+    }    
 }
 
 void update_display1() {
@@ -302,8 +304,11 @@ int main() {
     // Initialize buttons with interrupts
     init_buttons_interrupts();
 
+    // Set initial display mode
     //DS3231_setDate(31, 8, 25);
     //DS3231_setTime(10, 52, 0);
+
+    // Set initial Alarm2 to 07:00
     //DS3231_setAlarm2(7, 0);
 
     // Initialize ADC
@@ -336,20 +341,26 @@ int main() {
         wdt_reset(); // Reset the watchdog timer
 
         // Determine the current display mode based on the seconds
+        // 
         // Change display every 10 seconds
         // current_display_mode = (time_second % 20 < 10) ? 0 : 1;
+        // Change display every 20 seconds
+        // current_display_mode = (time_second % 40 < 20) ? 0 : 1;
+        // Change display
         // 0 → for 0–39 seconds (40 seconds)
         // 1 → for 40–59 seconds (20 seconds)
         current_display_mode = (time_second % 60 < 40) ? 0 : 1;
 
         if (button_pressed_flag) {
-            // Change the display mode when the button is pressed. 
+            // Change the display mode when the button is pressed.
+
             // Toggle between 0 and 1
-            //current_display_mode = (current_display_mode + 1) % 2; 
-            //Inverse the current mode
-            //current_display_mode = (current_display_mode == 0) ? 1 : 0;
-            playBeep();               
-            button_pressed_flag = DEFAULT_BUTTON;  // Reset the flag       
+            // current_display_mode = (current_display_mode + 1) % 2; 
+
+            // Inverse the current mode
+            // current_display_mode = (current_display_mode == 0) ? 1 : 0;
+            playBeep();
+            button_pressed_flag = DEFAULT_BUTTON;  // Reset the flag
         }        
 
         if (update_flag) {
