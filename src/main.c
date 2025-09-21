@@ -233,7 +233,7 @@ void check_alarm2() {
 
 void update_display2() {
     // Sensors
-    // TDO: display all sensors. temp ds3231, temp dht22, temp bmp180, pressure bmp180, humanidiat dht22.
+    // TODO: display all sensors. temp ds3231, temp dht22, temp bmp180, pressure bmp180, humanidiat dht22.
 
 }
 
