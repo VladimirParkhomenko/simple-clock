@@ -56,6 +56,8 @@ volatile uint8_t system_awake = 1;  // Track if system is awake
 //char buffer_time[20];
 uint8_t time_hour, time_minute, time_second;
 
+uint8_t day_of_week;
+
 //char buffer_calendar[20];
 uint8_t calendar_day, calendar_month, calendar_year; 
 
@@ -155,8 +157,8 @@ ISR(TIMER1_COMPA_vect) {
 }
 
 void read_datetime() {
-    DS3231_getDate(&calendar_day, &calendar_month, &calendar_year);
-    DS3231_getTime(&time_hour, &time_minute, &time_second);
+    DS3231_getTime(&time_hour, &time_minute, &time_second, &day_of_week);
+    DS3231_getDate(&calendar_day, &calendar_month, &calendar_year);    
     DS3231_getTemperature(&ds3231_temperature);
     DS3231_getAlarm2(&alarm2_hour, &alarm2_minute);
 }
@@ -183,62 +185,66 @@ void read_sensors(){
 }
 
 void check_alarm2() {   
+
+    if(day_of_week == SATURDAY) {
+        return; // No alarm on Saturday and Sunday
+    }
     
-    if (alarm2_hour == time_hour){    
+    if (alarm2_hour != time_hour){
+        return; // No alarm on the same hour
+    } 
 
-        wdt_reset(); // Reset the watchdog timer
+    wdt_reset(); // Reset the watchdog timer
 
-        if (alarm2_minute == time_minute) {
-            if (time_second % 15 == 0) {
-                playBeep();
-            }
+    if (alarm2_minute == time_minute) {
+        if (time_second % 15 == 0) {
+            playBeep();
         }
+    }
 
-        if (alarm2_minute + 1 == time_minute) {
-            if (time_second % 10 == 0) {
-                playBeep();
-            }
-        } 
+    if (alarm2_minute + 1 == time_minute) {
+        if (time_second % 10 == 0) {
+            playBeep();
+        }
+    } 
 
-        if (alarm2_minute + 3 == time_minute) {
-            if (time_second % 20 == 0) {
-                playRingtone2();
-            }
-        } 
+    if (alarm2_minute + 5 == time_minute) {
+        if (time_second % 20 == 0) {
+            playRingtone2();
+        }
+    } 
 
-        if (alarm2_minute + 6 == time_minute) {
-            if (time_second % 20 == 0) {
-                playAlarmBeep();
-            }
-        } 
+    if (alarm2_minute + 10 == time_minute) {
+        if (time_second % 20 == 0) {
+            playAlarmBeep();
+        }
+    } 
 
-        if (alarm2_minute + 10 == time_minute) {
-            if (time_second % 20 == 0) {
-                playAlarmBeep();
-            }
-        }         
+    if (alarm2_minute + 11 == time_minute) {
+        if (time_second % 15 == 0) {
+            playAlarmBeep();
+        }
+    }         
 
-        if (alarm2_minute + 12 == time_minute) {
-            if (time_second % 15 == 0) {
-                playAlarmBeep();
-            }
-        } 
 
-    }    
+
+      
 }
 
 void update_display1() {
     //PORTB ^= (1 << PB5); // Toggle LED on PB5 
 
     char buffer_lcd[20];
-    char buffer_float[8];     
-
+    char buffer_float[8]; 
+    char day_buffer[4]; 
+    
 
     sprintf(buffer_lcd, "%02d:%02d:%02d", time_hour, time_minute, time_second);
     lcd_set_cursor(0, 0);        
     lcd_print(buffer_lcd);
 
-    sprintf(buffer_lcd, "%02d/%02d",  calendar_day, calendar_month);
+    sprintf(day_buffer, "%s", DayMap[day_of_week-1].value);
+    sprintf(buffer_lcd, "%02d%s",  calendar_day,  day_buffer);
     lcd_set_cursor(1, 0);        
     lcd_print(buffer_lcd);
 
@@ -268,48 +274,30 @@ void update_display0() {
 void hello_world(int8_t mode) {
     char buffer_lcd[20];
     lcd_clear();
-    sprintf(buffer_lcd, "Hello World");
-    lcd_set_cursor(0, 0);
-    lcd_print(buffer_lcd);
-    _delay_ms(500);
-    lcd_clear();
 
     switch (mode)
     {
     case 0:
-        for (int i = 0; i < 10; i++) {        
-            playBeep();
-            display_large_digit2(i, 0); // Display the digit in the center 
-            _delay_ms(400);
-        }
+        playBeep();
+        sprintf(buffer_lcd, "Hello World");
+        lcd_set_cursor(2, 0);        
+        lcd_print(buffer_lcd);
+        _delay_ms(400);
         break;
     case 1:
+        for (int i = 0; i < 4; i++) {        
+            playBeep();
+            display_large_digit2(i, 0); // Display the digit in the center
+            _delay_ms(400);
+        }
+        break; 
+    case 2:
         for (int i = 3; i >= 0; i--) {        
             playBeep();
             display_large_digit2(i, 0); // Display the digit in the center 
             _delay_ms(400);
         }
-        break;
-    case 2:
-        for (int i = 10; i >= 0; i--) {            
-            for (int j = 0; j < 4; j++) {         
-                //lcd_clear();
-                display_large_digit2(i, j); // Display the digit in the center 
-                _delay_ms(100);
-            }
-            playBeep();
-            _delay_ms(400);
-            lcd_clear();
-        }
-        break;
-    case 3:
-        for (int i = 3; i >= 0; i--) {  
-            playBeep();               
-            lcd_clear();
-            display_large_digit2(i, i); // Display the digit in the center 
-            _delay_ms(400);           
-        }
-        break;
+        break;   
     default:
         break;
     }
@@ -323,7 +311,7 @@ int main() {
     DDRB |= (1 << PB5); // Set PB5 (pin 13) as output    
 
     // Initialize UART
-    //uart_init(UART_BAUD_SELECT(UART_BAUD_RATE, F_CPU));
+    // uart_init(UART_BAUD_SELECT(UART_BAUD_RATE, F_CPU));
 
     // Enable global interrupts
     sei();   
@@ -355,12 +343,13 @@ int main() {
     // Initialize buttons with interrupts
     init_buttons_interrupts();
 
-    // Set initial display mode
-    //DS3231_setDate(31, 8, 25);
-    //DS3231_setTime(10, 52, 0);
+    // Set initial display mode    
+    // DS3231_setTime(17, 37, 0, SUNDAY);
+    // DS3231_setDate(21, 9, 25);
 
     // Set initial Alarm2 to 07:00
-    //DS3231_setAlarm2(7, 0);
+    // DS3231_clearAlarm2();
+    // DS3231_setAlarm2(7, 0);
 
     // Initialize ADC
     adc_init();
@@ -371,7 +360,7 @@ int main() {
     pwm_init(BACKLIGHT_PIN); // Initialize PWM for backlight control
     pwm_set_duty_cycle(96); // Set the initial brightness level     
     
-    hello_world(2);
+    hello_world(0);
 
     _delay_ms(1000);
 

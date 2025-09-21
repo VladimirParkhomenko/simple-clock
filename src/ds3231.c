@@ -1,3 +1,4 @@
+
 #include <avr/io.h>
 #include <stdio.h>
 #include <util/delay.h>
@@ -6,6 +7,17 @@
 #include "ds3231.h"
 
 //#include "uart.h"
+
+KeyValuePair DayMap[] = {
+    {0, "Mon"},
+    {1, "Tue"},
+    {2, "Wed"},
+    {3, "Thu"},
+    {4, "Fri"},
+    {5, "Sat"},
+    {6, "Sun"}
+};
+
 
 
 void DS3231_init(void) {
@@ -16,7 +28,7 @@ void DS3231_init(void) {
     i2c_stop();
 }
 
-void DS3231_getTime(uint8_t* hour, uint8_t* minute, uint8_t* second) {
+void DS3231_getTime(uint8_t* hour, uint8_t* minute, uint8_t* second, uint8_t* day_of_week) {
     //uart_puts("Starting I2C write for time retrieval...\n");
     if (i2c_start((DS3231_ADDRESS << 1) | I2C_WRITE)) {
         //uart_puts("I2C start for write failed!\n");
@@ -34,12 +46,11 @@ void DS3231_getTime(uint8_t* hour, uint8_t* minute, uint8_t* second) {
     }
     //uart_puts("I2C start for read successful...\n");
 
+
     *second = bcd_to_decimal(i2c_read_ack());
-    //uart_puts("Seconds read...\n");
     *minute = bcd_to_decimal(i2c_read_ack());
-    //uart_puts("Minutes read...\n");
-    *hour = bcd_to_decimal(i2c_read_nack());
-    //uart_puts("Hours read...\n");
+    *hour = bcd_to_decimal(i2c_read_ack());
+    *day_of_week = bcd_to_decimal(i2c_read_nack());
 
     i2c_stop();
     //uart_puts("Time retrieval completed successfully.\n");
@@ -48,7 +59,7 @@ void DS3231_getTime(uint8_t* hour, uint8_t* minute, uint8_t* second) {
 
 
 
-void DS3231_setTime(uint8_t hour, uint8_t minute, uint8_t second) {
+void DS3231_setTime(uint8_t hour, uint8_t minute, uint8_t second, uint8_t day_of_week) {
     // Start I2C communication with DS3231
     i2c_start((DS3231_ADDRESS << 1) | I2C_WRITE);
     i2c_write(0x00); // Set register pointer to 00h
@@ -57,10 +68,13 @@ void DS3231_setTime(uint8_t hour, uint8_t minute, uint8_t second) {
     i2c_write(decimal_to_bcd(second));
     i2c_write(decimal_to_bcd(minute));
     i2c_write(decimal_to_bcd(hour));
+    i2c_write(decimal_to_bcd(day_of_week)); // Write day of the week to DS3231
 
     // Stop I2C communication
     i2c_stop();
 }
+
+// Date functions
 
 void DS3231_getDate(uint8_t* day, uint8_t* month, uint8_t* year) {
     //uart_puts("Getting date from DS3231...\n");
@@ -115,6 +129,7 @@ void DS3231_setDate(uint8_t day, uint8_t month, uint8_t year) {
     //uart_puts("Date set successfully.\n");
 }
 
+
 // Alarm functions
 
 void DS3231_setAlarm1(uint8_t hour, uint8_t minute, uint8_t second) {
@@ -143,6 +158,41 @@ void DS3231_setAlarm2(uint8_t hour, uint8_t minute) {
     // Stop I2C communication
     i2c_stop();
 }
+
+/*
+void DS3231_setAlarm2_interrupt(uint8_t hour, uint8_t minute, uint8_t day) {
+    // Start I2C communication with DS3231
+    i2c_start((DS3231_ADDRESS << 1) | I2C_WRITE);
+    i2c_write(0x0B); // Set register pointer to 0Bh
+    // The day, month, and year values are written to the corresponding registers (0x0B, 0x0C, 0x0D).
+    // Write the time data to DS3231   
+    i2c_write(decimal_to_bcd(minute));
+    i2c_write(decimal_to_bcd(hour));
+    i2c_write(decimal_to_bcd(day));
+
+    //
+    // ALARM 2 REGISTER MASK BITS (BIT 7)
+    // DY/DT | A2M4 | A2M3 | A2M2 | ALARM RATE
+    // ----------------------------------------------------------------------------
+    // X      1      1      1      Alarm once per minute (00 seconds of every minute)
+    // X      1      1      0      Alarm when minutes match
+    // X      1      0      0      Alarm when hours and minutes match
+    // 0      0      0      0      Alarm when date, hours, and minutes match
+    // 1      0      0      0      Alarm when day, hours, and minutes match
+    //   
+    // Set the alarm mode
+    // 0 - once per minute, 
+    // 1 - when minutes match, 
+    // 2 - when hours and minutes match, 
+    // 3 - when date, hours, and minutes match, 
+    // 4 - when day, hours, and minutes match
+
+    // i2c_write(mode << 7); // Set the mask bits according to the mode
+    // Stop I2C communication
+    i2c_stop();
+}
+*/
+//
 
 void DS3231_getAlarm1(uint8_t* hour, uint8_t* minute, uint8_t* second) {
     //uart_puts("Starting I2C write for alarm 1 retrieval...\n");
@@ -221,6 +271,22 @@ void DS3231_clearAlarm2(void) {
     // Stop I2C communication
     i2c_stop();
 }
+
+// Alarm 2 Interrupt Enable
+
+void init_alarm2_interrupt() {
+    // Enable Alarm 2 Interrupt
+    i2c_start((DS3231_ADDRESS << 1) | I2C_WRITE);
+    i2c_write(0x0E); // Set register pointer to 0Eh (Control Register)
+    uint8_t control_reg = i2c_read_nack();
+    control_reg |= (1 << A2IE); // Set A2IE bit to enable Alarm 2 interrupt
+    i2c_start((DS3231_ADDRESS << 1) | I2C_WRITE);
+    i2c_write(0x0E); // Set register pointer to 0Eh again
+    i2c_write(control_reg); // Write back modified control register
+    i2c_stop();
+}
+
+// Temperature function
 
 void DS3231_getTemperature(int8_t* temperature) {
     // Start I2C communication with DS3231

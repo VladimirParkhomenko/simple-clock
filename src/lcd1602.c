@@ -153,17 +153,11 @@ void display_large_time2(uint8_t hours, uint8_t minutes, uint8_t seconds) {
 
     // Display colon
     char buffer_lcd[20];
-    if(seconds % 2 == 0) {      
-        sprintf(buffer_lcd, ".");
-        lcd_set_cursor(1, 7);        
-        lcd_print(buffer_lcd);
+    if(seconds % 2 == 0) {     
         lcd_set_cursor(1, 8);
-        lcd_write_byte(4, 1);
+        lcd_write_byte(0xEB, 1);
     } else {
-        sprintf(buffer_lcd, ".");
-        lcd_set_cursor(1, 8);        
-        lcd_print(buffer_lcd);
-        lcd_set_cursor(1, 7);
+        lcd_set_cursor(1, 8);
         lcd_write_byte(4, 1);
     }    
 
