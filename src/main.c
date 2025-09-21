@@ -231,7 +231,15 @@ void check_alarm2() {
       
 }
 
+void update_display2() {
+    // Sensors
+    // TDO: display all sensors. temp ds3231, temp dht22, temp bmp180, pressure bmp180, humanidiat dht22.
+
+}
+
 void update_display1() {
+    // Calendar. full data time with seconds. day, day of week (full name), month (full name)
+
     //PORTB ^= (1 << PB5); // Toggle LED on PB5 
 
     char buffer_lcd[20];
@@ -267,6 +275,8 @@ void update_display1() {
 }
 
 void update_display0() {
+    // Main clock (big gigit)
+
     //PORTB ^= (1 << PB5); // Toggle LED on PB5    
     display_large_time2(time_hour, time_minute, time_second); // Display the time
 }
@@ -378,6 +388,7 @@ int main() {
         // 0 → for 0–39 seconds (40 seconds)
         // 1 → for 40–59 seconds (20 seconds)
         current_display_mode = (time_second % 60 < 40) ? 0 : 1;
+        // TODO: Change 3 display. 30, 15, 15 seconds.
 
         if (button_pressed_flag) {
             // Change the display mode when the button is pressed.
