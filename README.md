@@ -355,6 +355,5 @@ For questions, issues, or contributions:
 
 **Note**: This project is designed for educational and hobbyist purposes. Always follow proper electrical safety practices when working with electronic components.
 
-![img](img/IMG_20250922_192045~2.jpg)
 ![img](img/IMG_20250922_192408~2.jpg)
 ![img](img/IMG_20250922_192420~2.jpg)
