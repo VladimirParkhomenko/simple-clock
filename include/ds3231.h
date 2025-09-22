@@ -28,6 +28,9 @@ typedef struct {
 } KeyValuePair;
 
 extern KeyValuePair DayMap[];
+extern KeyValuePair DayFullMap[];
+extern KeyValuePair MonthMap[];
+extern KeyValuePair MonthFullMap[];
 
 
 void DS3231_init(void);

@@ -115,9 +115,9 @@ static const uint8_t digits2[10][6] = {
     {5, 0, 7, 7, 2, 1}, // 2
     {0, 2, 3, 1, 2, 3}, // 3
     {3, 4, 3, 0, 0, 3}, // 4
-    {3, 2, 0, 1, 1, 3}, // 5
-    {7, 0, 5, 3, 2, 3}, // 6
-    {6, 0, 3, 4, 7, 0}, // 7
+    {3, 2, 0, 7, 1, 3}, // 5
+    {3, 0, 6, 3, 2, 3}, // 6
+    {6, 0, 3, 4, 3, 4}, // 7
     {3, 2, 3, 3, 2, 3}, // 8
     {3, 2, 3, 7, 1, 3}  // 9
 
@@ -152,11 +152,15 @@ void display_large_time2(uint8_t hours, uint8_t minutes, uint8_t seconds) {
     display_large_digit2(hours % 10, 1);
 
     // Display colon
-    char buffer_lcd[20];
+    //char buffer_lcd[20];
     if(seconds % 2 == 0) {     
+        lcd_set_cursor(0, 8);
+        lcd_write_byte(0xA1, 1);
         lcd_set_cursor(1, 8);
-        lcd_write_byte(0xEB, 1);
+        lcd_write_byte(0xDF, 1);
     } else {
+        lcd_set_cursor(0, 8);
+        lcd_write_byte(4, 1);
         lcd_set_cursor(1, 8);
         lcd_write_byte(4, 1);
     }    

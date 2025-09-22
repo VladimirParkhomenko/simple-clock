@@ -235,6 +235,34 @@ void update_display2() {
     // Sensors
     // TODO: display all sensors. temp ds3231, temp dht22, temp bmp180, pressure bmp180, humanidiat dht22.
 
+    char buffer_lcd[20];
+    char buffer_float[8]; 
+
+    dtostrf(bmp180_temperature, 2, 1, buffer_float);   
+    sprintf(buffer_lcd, "%s%c", buffer_float, 0xDF);      
+    lcd_set_cursor(0, 0);        
+    lcd_print(buffer_lcd);
+
+    sprintf(buffer_lcd, "%d.%d%c", dht22_temperature_int, dht22_temperature_dec, 0xDF);
+    lcd_set_cursor(0, 6);        
+    lcd_print(buffer_lcd);
+
+ 
+    sprintf(buffer_lcd, "%d%cC", ds3231_temperature, 0xDF);
+    lcd_set_cursor(0, 12);        
+    lcd_print(buffer_lcd);
+
+    //
+
+    sprintf(buffer_lcd, "%d.%d%c", dht22_humidity_int, dht22_humidity_dec, 0x25);
+    lcd_set_cursor(1, 0);        
+    lcd_print(buffer_lcd);
+
+    dtostrf(pressure_mmHg, 3, 0, buffer_float);   
+    sprintf(buffer_lcd, "%smmHg", buffer_float); 
+    lcd_set_cursor(1, 9);
+    lcd_print(buffer_lcd);
+
 }
 
 void update_display1() {
@@ -243,35 +271,28 @@ void update_display1() {
     //PORTB ^= (1 << PB5); // Toggle LED on PB5 
 
     char buffer_lcd[20];
-    char buffer_float[8]; 
-    char day_buffer[4]; 
-    
+    char day_buffer[19];
+    char month_buffer[4];
+
+    sprintf(day_buffer, "%s", DayFullMap[day_of_week-1].value);    
+    sprintf(month_buffer, "%s", MonthMap[calendar_month-1].value);
 
     sprintf(buffer_lcd, "%02d:%02d:%02d", time_hour, time_minute, time_second);
     lcd_set_cursor(0, 0);        
     lcd_print(buffer_lcd);
 
-    sprintf(day_buffer, "%s", DayMap[day_of_week-1].value);
-    sprintf(buffer_lcd, "%02d%s",  calendar_day,  day_buffer);
-    lcd_set_cursor(1, 0);        
+    sprintf(buffer_lcd, "%s",  month_buffer);
+    lcd_set_cursor(0, 13);
     lcd_print(buffer_lcd);
 
-    dtostrf(bmp180_temperature, 2, 1, buffer_float);   
-    sprintf(buffer_lcd, "%s%c", buffer_float, 0xDF);      
-    lcd_set_cursor(1, 6);        
+    sprintf(buffer_lcd, "%02d %s",  calendar_day,  day_buffer);
+    lcd_set_cursor(1, 0);
     lcd_print(buffer_lcd);
 
-    sprintf(buffer_lcd, "%d.%d%c", dht22_humidity_int, dht22_humidity_dec, 0x25);
-    lcd_set_cursor(1, 11);        
+    sprintf(buffer_lcd, "%02d", calendar_year);
+    lcd_set_cursor(1, 14);
     lcd_print(buffer_lcd);
 
-    dtostrf(pressure_mmHg, 3, 0, buffer_float);   
-    sprintf(buffer_lcd, "%smmHg", buffer_float); 
-    lcd_set_cursor(0, 9);
-    lcd_print(buffer_lcd);       
-        
-        
-    
 }
 
 void update_display0() {
@@ -290,9 +311,9 @@ void hello_world(int8_t mode) {
     case 0:
         playBeep();
         sprintf(buffer_lcd, "Hello World");
-        lcd_set_cursor(2, 0);        
+        lcd_set_cursor(0, 2);        
         lcd_print(buffer_lcd);
-        _delay_ms(400);
+        _delay_ms(1000);
         break;
     case 1:
         for (int i = 0; i < 4; i++) {        
@@ -368,27 +389,31 @@ int main() {
     //uint16_t light_level;
     //uint8_t brightness;
     pwm_init(BACKLIGHT_PIN); // Initialize PWM for backlight control
-    pwm_set_duty_cycle(96); // Set the initial brightness level     
+    pwm_set_duty_cycle(96); // Set the initial brightness level 
     
     hello_world(0);
-
-    _delay_ms(1000);
 
     while (1) {  
 
         wdt_reset(); // Reset the watchdog timer
 
-        // Determine the current display mode based on the seconds
-        // 
         // Change display every 10 seconds
         // current_display_mode = (time_second % 20 < 10) ? 0 : 1;
+
         // Change display every 20 seconds
         // current_display_mode = (time_second % 40 < 20) ? 0 : 1;
+
         // Change display
         // 0 → for 0–39 seconds (40 seconds)
         // 1 → for 40–59 seconds (20 seconds)
-        current_display_mode = (time_second % 60 < 40) ? 0 : 1;
-        // TODO: Change 3 display. 30, 15, 15 seconds.
+        // current_display_mode = (time_second % 60 < 40) ? 0 : 1;
+
+        // Change 3 display. 30, 15, 15 seconds.
+        // 0 → for 0–29 seconds (30 seconds)
+        // 1 → for 30–44 seconds (15 seconds)
+        // 2 → for 45–59 seconds (15 seconds)
+        current_display_mode = (time_second % 60 < 30) ? 0 : ((time_second % 60 < 45) ? 1 : 2);
+        // current_display_mode = 2;
 
         if (button_pressed_flag) {
             // Change the display mode when the button is pressed.
@@ -424,11 +449,21 @@ int main() {
                 lcd_clear(); // Clear the display when switching modes
             }
 
-            if(current_display_mode == 0) {
+            switch (current_display_mode)
+            {
+            case 0:
                 update_display0();
-            } else {               
+                break;
+            case 1:
                 update_display1();
-            }            
+                break;
+            case 2:
+                update_display2();
+                break;
+            default:
+                update_display0();
+                break;
+            }
             
             previous_display_mode = current_display_mode;
 
