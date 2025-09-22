@@ -1,6 +1,2 @@
-LCD1602 + I2C module
-
-VCC - +5v
 SDA - A4 (yellow)
-SCL - A5 (blue) 
-Address: 0x27
+SCL - A5 (blue)

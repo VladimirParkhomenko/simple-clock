@@ -6,8 +6,8 @@
 
 #define UART_BAUD_RATE 9600
 #define BAUD 9600
-//#define MYUBRR F_CPU/16/BAUD-1
-#define MYUBRR F_CPU/8/BAUD-1
+//#define MYUBRR F_CPU/16/BAUD-1 // For U2X0 = 0
+#define MYUBRR F_CPU/8/BAUD-1 // For U2X0 = 1
 
 #define PRESCALER 1024
 #define TARGET_FREQ 1 // Target frequency in Hz for Timer1

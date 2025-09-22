@@ -423,6 +423,7 @@ int main() {
 
             // Inverse the current mode
             // current_display_mode = (current_display_mode == 0) ? 1 : 0;
+            
             playBeep();
             button_pressed_flag = DEFAULT_BUTTON;  // Reset the flag
         }        

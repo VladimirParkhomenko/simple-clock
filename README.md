@@ -357,5 +357,5 @@ For questions, issues, or contributions:
 
 ---
 
-![img](img/IMG_20250922_192408~2.jpg)
-![img](img/IMG_20250922_192420~2.jpg)
+![img](img/IMG_20250922.jpg)
+![img](img/IMG_20250922_2.jpg)
