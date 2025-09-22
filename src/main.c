@@ -8,14 +8,6 @@
  * the screen every second to display the message again.
  */
 
-#define F_CPU 8000000UL
-
-#define UART_BAUD_RATE 9600
-#define BAUD 9600
-#define MYUBRR F_CPU/16/BAUD-1
-
-#define PRESCALER 1024
-#define TARGET_FREQ 1
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -23,7 +15,11 @@
 #include <string.h>
 #include <avr/interrupt.h>
 #include <stdlib.h>
+#include <avr/sleep.h>
+#include <avr/power.h>
+#include <avr/wdt.h>
 
+#include "main.h"
 //#include "uart.h"
 #include "i2c.h"
 #include "lcd1602.h"
@@ -36,26 +32,31 @@
 
 
 #define MODE_BUTTON_PIN PD2
-
 #define DISPLAY_0 0
-
-
 #define DEFAULT_BUTTON 0
 #define MODE_BUTTON 1
-
 #define BACKLIGHT_PIN PD3  // pin for PWM control (display light intensity)
 #define PIN_PHOTOREZISTOR 2 //A2
 
-
-int8_t current_mode = DISPLAY_0;
+volatile int8_t current_display_mode = DISPLAY_0;
+volatile uint8_t previous_display_mode = 0; // Track previous display mode for switching
 
 volatile uint8_t button_pressed_flag = DEFAULT_BUTTON;
-volatile uint8_t display_update_flag = 0; // New flag to control display updates
-volatile uint8_t display_show_flag = DISPLAY_0;
-volatile uint8_t previous_display_mode = 0; // Track previous display mode for switching
+volatile uint8_t update_flag = 0; // New flag to control display updates
+
+
+// Power management variables
+volatile uint32_t backlight_timer = 0;
+volatile uint32_t sensor_read_timer = 0;
+volatile uint8_t backlight_state = 1;  // 1 = on, 0 = off
+volatile uint8_t last_sensor_read_minute = 0xFF;  // Track last sensor read time
+volatile uint8_t last_time_read_minute = 0xFF;  // Track last time read
+volatile uint8_t system_awake = 1;  // Track if system is awake
 
 //char buffer_time[20];
 uint8_t time_hour, time_minute, time_second;
+
+uint8_t day_of_week;
 
 //char buffer_calendar[20];
 uint8_t calendar_day, calendar_month, calendar_year; 
@@ -69,15 +70,28 @@ int8_t ds3231_temperature;
 // Variables for DHT22 sensor
 uint8_t dht22_humidity_int, dht22_humidity_dec, dht22_temperature_int, dht22_temperature_dec;
 
-
+// Variables for BMP180 sensor
 float bmp180_temperature;
 float bmp180_humidity;
 float bmp180_pressure;
 float pressure_mmHg;
 
-void update_display0(void);
-void update_display1(void);
-void check_alarm2(void);
+
+void init_watchdog() {
+    // Configure watchdog timer for 8-second timeout
+    wdt_enable(WDTO_8S);
+    
+    // Enable watchdog interrupt
+    WDTCSR |= (1 << WDCE) | (1 << WDE);
+    WDTCSR = (1 << WDIE) | (1 << WDP3) | (1 << WDP0);  // 8 second timeout
+}
+
+// Watchdog interrupt service routine
+ISR(WDT_vect) {
+    // This will wake up the system if it gets stuck
+    system_awake = 1;
+    
+}
 
 
 void init_buttons_interrupts() {
@@ -90,34 +104,27 @@ void init_buttons_interrupts() {
 
 }
 
-/*
-The function begins by setting the WGM12 bit in the TCCR1B register, which puts Timer1 into CTC (Clear Timer on Compare Match) mode. 
-In CTC mode, the timer counts up to a specified value (set in the OCR1A register), then resets to zero and optionally triggers an interrupt.
-The prescaler value of 1024 is not a fixed constant; it is a selectable value provided by the AVR timer hardware. 
-The prescaler divides the main system clock frequency (F_CPU) to slow down the timer’s counting rate, 
-making it possible to achieve longer time intervals (like 1 second) without needing a very large compare value.
-You choose the prescaler based on your desired timer interval and the available options supported by the microcontroller (typically 1, 8, 64, 256, or 1024 for Timer1 on AVR). 
-In this code, 1024 is chosen because it allows the compare value (OCR1A) to fit within the 16-bit range of Timer1 for a 1-second interval, 
-given the system clock (either 8MHz or 16MHz). The prescaler is thus a calculated choice, balancing timer resolution, maximum interval, and hardware limits.
-
-
-OCR1A = (F_CPU / Prescaler × Target Frequency) - 1
-
-Example:
-2. 1 tick per second (1 Hz)
-   OCR1A = (16,000,000 / 1024 × 1) - 1 ≈ 15624
-
-3. 2 ticks per second (2 Hz)
-   OCR1A = (16,000,000 / 1024 × 2) - 1 ≈ 31249
-
-4. 1 ticks per second (1 HZ)
-   OCR1A = (8,000,000 / 1024 × 1) - 1 ≈ 7812
-
-5. 2 ticks per second (2 HZ)
-   OCR1A = (8,000,000 / 1024 × 2) - 1 ≈ 15624
-
-*/
 void timer1_init() {
+    /*
+                    F_CPU
+    OCR1A = ------------------------------- - 1
+            Prescaler × Target Frequency   
+
+    Example:
+    2. 1 tick per second (1 Hz)
+    OCR1A = (16,000,000 / 1024 × 1) - 1 ≈ 15624
+
+    3. 2 ticks per second (2 Hz)
+    OCR1A = (16,000,000 / 1024 × 2) - 1 ≈ 31249
+
+    4. 1 ticks per second (1 HZ)
+    OCR1A = (8,000,000 / 1024 × 1) - 1 ≈ 7812
+
+    5. 2 ticks per second (2 HZ)
+    OCR1A = (8,000,000 / 1024 × 2) - 1 ≈ 15624
+
+    */
+
     TCCR1B |= (1 << WGM12); // Configure Timer1 in CTC mode    
     //OCR1A = 15624; // Set the value for a 1-second interval (assuming 16MHz clock and prescaler of 1024)    
     //OCR1A = 7812; // Set the value for a 1-second interval (assuming 8MHz clock prescaler of 1024)
@@ -134,9 +141,8 @@ void start_timer1() {
     TCCR1B |= (1 << CS12) | (1 << CS10); // Set the clock source bits to restart Timer1 with a prescaler of 1024
 }
 
-
-// interrupt service routine for INT0. Button to change the mode
 ISR(INT0_vect) {
+    // interrupt service routine for INT0. Button to change the mode
     _delay_ms(50);  // Simple debouncing
     if (!(PIND & (1 << MODE_BUTTON_PIN))) {        
         //current_mode = (current_mode + 1) % 6;  // Increment the mode     
@@ -145,120 +151,190 @@ ISR(INT0_vect) {
     }
 }
 
-
 ISR(TIMER1_COMPA_vect) {
     //PORTB ^= (1 << PB5); // Toggle LED on PB5 
-    display_update_flag = 1; // Set the flag to indicate that the display has been updated
+    update_flag = 1; // Set the flag to indicate that the display has been updated
 }
 
 void read_datetime() {
-    DS3231_getDate(&calendar_day, &calendar_month, &calendar_year);
-    DS3231_getTime(&time_hour, &time_minute, &time_second);
+    DS3231_getTime(&time_hour, &time_minute, &time_second, &day_of_week);
+    DS3231_getDate(&calendar_day, &calendar_month, &calendar_year);    
     DS3231_getTemperature(&ds3231_temperature);
     DS3231_getAlarm2(&alarm2_hour, &alarm2_minute);
 }
 
-uint16_t read_sensors(){     
+void read_sensors(){     
+    // Read sensors exactly every 30 seconds
+    uint8_t do_read_sensor = (time_second % 30 == 0) ? 1 : 0;
+
+    if (!do_read_sensor) {
+        return;
+    }
+
+    if (time_hour >= 0 && time_hour <= 6) {
+        return;
+    }
+
+    // Get the latest sensor data from the DHT22
     DHT22_Read(&dht22_humidity_int, &dht22_humidity_dec, &dht22_temperature_int, &dht22_temperature_dec);  
 
      // Get the latest sensor data from the BMP180       
     bmp180_temperature = BMP180_readTemperature(); // Read temperature first (required for pressure compensation)
     bmp180_pressure = BMP180_readPressure();   
     pressure_mmHg = bmp180_pressure * 0.75006; // Convert hPa to mmHg
-
-    return 0; // Return value to fix warning
 }
 
-void check_alarm2(void) {     
+void check_alarm2() {   
 
-    if (alarm2_hour == time_hour && alarm2_minute == time_minute) {
+    if(day_of_week == SATURDAY) {
+        return; // No alarm on Saturday and Sunday
+    }
+    
+    if (alarm2_hour != time_hour){
+        return; // No alarm on the same hour
+    } 
+
+    wdt_reset(); // Reset the watchdog timer
+
+    if (alarm2_minute == time_minute) {
         if (time_second % 15 == 0) {
             playBeep();
         }
-    } 
-    
-    if (alarm2_hour == time_hour && alarm2_minute + 1 == time_minute) {
+    }
+
+    if (alarm2_minute + 1 == time_minute) {
         if (time_second % 10 == 0) {
             playBeep();
         }
     } 
 
-    if (alarm2_hour == time_hour && alarm2_minute + 3 == time_minute) {
+    if (alarm2_minute + 5 == time_minute) {
         if (time_second % 20 == 0) {
             playRingtone2();
         }
     } 
 
-    if (alarm2_hour == time_hour && alarm2_minute + 6 == time_minute) {
+    if (alarm2_minute + 10 == time_minute) {
         if (time_second % 20 == 0) {
             playAlarmBeep();
         }
     } 
 
-    if (alarm2_hour == time_hour && alarm2_minute + 10 == time_minute) {
-        if (time_second % 20 == 0) {
+    if (alarm2_minute + 11 == time_minute) {
+        if (time_second % 15 == 0) {
             playAlarmBeep();
         }
-    } 
+    }         
 
-    if (alarm2_hour == time_hour && alarm2_minute + 12 == time_minute) {
-        if (time_second % 20 == 0) {
-            playCheerfulWake();
-        }
-    } 
 
-    
+
+      
+}
+
+void update_display2() {
+    // Sensors
+    // TODO: display all sensors. temp ds3231, temp dht22, temp bmp180, pressure bmp180, humanidiat dht22.
+
+    char buffer_lcd[20];
+    char buffer_float[8]; 
+
+    dtostrf(bmp180_temperature, 2, 1, buffer_float);   
+    sprintf(buffer_lcd, "%s%c", buffer_float, 0xDF);      
+    lcd_set_cursor(0, 0);        
+    lcd_print(buffer_lcd);
+
+    sprintf(buffer_lcd, "%d.%d%c", dht22_temperature_int, dht22_temperature_dec, 0xDF);
+    lcd_set_cursor(0, 6);        
+    lcd_print(buffer_lcd);
+
+ 
+    sprintf(buffer_lcd, "%d%cC", ds3231_temperature, 0xDF);
+    lcd_set_cursor(0, 12);        
+    lcd_print(buffer_lcd);
+
+    //
+
+    sprintf(buffer_lcd, "%d.%d%c", dht22_humidity_int, dht22_humidity_dec, 0x25);
+    lcd_set_cursor(1, 0);        
+    lcd_print(buffer_lcd);
+
+    dtostrf(pressure_mmHg, 3, 0, buffer_float);   
+    sprintf(buffer_lcd, "%smmHg", buffer_float); 
+    lcd_set_cursor(1, 9);
+    lcd_print(buffer_lcd);
+
 }
 
 void update_display1() {
+    // Calendar. full data time with seconds. day, day of week (full name), month (full name)
+
     //PORTB ^= (1 << PB5); // Toggle LED on PB5 
 
     char buffer_lcd[20];
-    char buffer_float[8];  
-    
-    read_datetime(); // Read the date and time from the DS3231
+    char day_buffer[19];
+    char month_buffer[4];
 
+    sprintf(day_buffer, "%s", DayFullMap[day_of_week-1].value);    
+    sprintf(month_buffer, "%s", MonthMap[calendar_month-1].value);
 
     sprintf(buffer_lcd, "%02d:%02d:%02d", time_hour, time_minute, time_second);
     lcd_set_cursor(0, 0);        
     lcd_print(buffer_lcd);
 
-    sprintf(buffer_lcd, "%02d/%02d",  calendar_day, calendar_month);
-    lcd_set_cursor(1, 0);        
+    sprintf(buffer_lcd, "%s",  month_buffer);
+    lcd_set_cursor(0, 13);
     lcd_print(buffer_lcd);
 
-    if (time_hour >= 6 && time_hour <= 23) {
-        read_sensors(); // Read DHT22 and BMP180 sensors
+    sprintf(buffer_lcd, "%02d %s",  calendar_day,  day_buffer);
+    lcd_set_cursor(1, 0);
+    lcd_print(buffer_lcd);
 
+    sprintf(buffer_lcd, "%02d", calendar_year);
+    lcd_set_cursor(1, 14);
+    lcd_print(buffer_lcd);
 
-
-        dtostrf(bmp180_temperature, 2, 1, buffer_float);   
-        sprintf(buffer_lcd, "%s%c", buffer_float, 0xDF);      
-        lcd_set_cursor(1, 6);        
-        lcd_print(buffer_lcd);
-
-        sprintf(buffer_lcd, "%d.%d%c", dht22_humidity_int, dht22_humidity_dec, 0x25);
-        lcd_set_cursor(1, 11);        
-        lcd_print(buffer_lcd);
-
-        dtostrf(pressure_mmHg, 3, 0, buffer_float);   
-        sprintf(buffer_lcd, "%smmHg", buffer_float); 
-        lcd_set_cursor(0, 9);
-        lcd_print(buffer_lcd);       
-        
-        
-    }
 }
 
-
 void update_display0() {
-    //PORTB ^= (1 << PB5); // Toggle LED on PB5
-    read_datetime(); // Read the date and time from the DS3231 
+    // Main clock (big gigit)
 
+    //PORTB ^= (1 << PB5); // Toggle LED on PB5    
     display_large_time2(time_hour, time_minute, time_second); // Display the time
 }
 
+void hello_world(int8_t mode) {
+    char buffer_lcd[20];
+    lcd_clear();
 
+    switch (mode)
+    {
+    case 0:
+        playBeep();
+        sprintf(buffer_lcd, "Hello World");
+        lcd_set_cursor(0, 2);        
+        lcd_print(buffer_lcd);
+        _delay_ms(1000);
+        break;
+    case 1:
+        for (int i = 0; i < 4; i++) {        
+            playBeep();
+            display_large_digit2(i, 0); // Display the digit in the center
+            _delay_ms(400);
+        }
+        break; 
+    case 2:
+        for (int i = 3; i >= 0; i--) {        
+            playBeep();
+            display_large_digit2(i, 0); // Display the digit in the center 
+            _delay_ms(400);
+        }
+        break;   
+    default:
+        break;
+    }
+
+   lcd_clear();
+}
 
 
 int main() { 
@@ -266,7 +342,7 @@ int main() {
     DDRB |= (1 << PB5); // Set PB5 (pin 13) as output    
 
     // Initialize UART
-    //uart_init(UART_BAUD_SELECT(UART_BAUD_RATE, F_CPU));
+    // uart_init(UART_BAUD_SELECT(UART_BAUD_RATE, F_CPU));
 
     // Enable global interrupts
     sei();   
@@ -280,19 +356,17 @@ int main() {
     
     // Initialize Timer2 for buzzer
     initTimer2();
-        
+
+    // Initialize watchdog
+    init_watchdog();        
 
     // Initialize LCD
     lcd_init();    
-    //lcd_clear(); 
-    create_custom_chars();
+ 
+    create_custom_chars();  
 
-    //uart_puts("UART initialized \n");  
-    // Main loop   
-
-     // Initialize DS3231
+    // Initialize DS3231
     DS3231_init();  
-   
 
     // Initialize bmp180
     BMP180_init(); 
@@ -300,9 +374,13 @@ int main() {
     // Initialize buttons with interrupts
     init_buttons_interrupts();
 
-    //DS3231_setDate(31, 8, 25);
-    //DS3231_setTime(10, 52, 0);
-    //DS3231_setAlarm2(7, 0);
+    // Set initial display mode    
+    // DS3231_setTime(17, 37, 0, SUNDAY);
+    // DS3231_setDate(21, 9, 25);
+
+    // Set initial Alarm2 to 07:00
+    // DS3231_clearAlarm2();
+    // DS3231_setAlarm2(7, 0);
 
     // Initialize ADC
     adc_init();
@@ -312,51 +390,51 @@ int main() {
     //uint8_t brightness;
     pwm_init(BACKLIGHT_PIN); // Initialize PWM for backlight control
     pwm_set_duty_cycle(96); // Set the initial brightness level 
-
-    char buffer_lcd[20];    
-    sprintf(buffer_lcd, "Hello World");
-    lcd_clear();
-    lcd_set_cursor(0, 0);        
-    lcd_print(buffer_lcd);     
-    _delay_ms(1000);
-    lcd_clear();
-
-    for (int i = 0; i < 10; i++) {
-        _delay_ms(1000);
-        playBeep();
-        display_large_digit2(i, 0);
-    }
-
-    _delay_ms(1000);
+    
+    hello_world(0);
 
     while (1) {  
 
-        
- 
-        if (button_pressed_flag) {
-            playBeep();     
-            button_pressed_flag = DEFAULT_BUTTON;  // Reset the flag       
-        } 
-        
-        // Determine the current display mode based on the seconds
+        wdt_reset(); // Reset the watchdog timer
+
         // Change display every 10 seconds
-        // uint8_t current_display_mode = (time_second % 20 < 10) ? 0 : 1;
+        // current_display_mode = (time_second % 20 < 10) ? 0 : 1;
+
+        // Change display every 20 seconds
+        // current_display_mode = (time_second % 40 < 20) ? 0 : 1;
+
+        // Change display
         // 0 → for 0–39 seconds (40 seconds)
         // 1 → for 40–59 seconds (20 seconds)
-        uint8_t current_display_mode = (time_second % 60 < 40) ? 0 : 1;
+        // current_display_mode = (time_second % 60 < 40) ? 0 : 1;
 
-        
-        if(current_display_mode == 0) {
-            // Check if we just switched to display 0
-            if(previous_display_mode != 0) {
-                //lcd_clear_line(1); // Clear line 1 when switching to display 0
-                lcd_clear();
-            }
-            if (display_update_flag) {
-                update_display0();
-                check_alarm2();
-                display_update_flag = 0;
-            }
+        // Change 3 display. 30, 15, 15 seconds.
+        // 0 → for 0–29 seconds (30 seconds)
+        // 1 → for 30–44 seconds (15 seconds)
+        // 2 → for 45–59 seconds (15 seconds)
+        current_display_mode = (time_second % 60 < 30) ? 0 : ((time_second % 60 < 45) ? 1 : 2);
+        // current_display_mode = 2;
+
+        if (button_pressed_flag) {
+            // Change the display mode when the button is pressed.
+
+            // Toggle between 0 and 1
+            // current_display_mode = (current_display_mode + 1) % 2; 
+
+            // Inverse the current mode
+            // current_display_mode = (current_display_mode == 0) ? 1 : 0;
+            playBeep();
+            button_pressed_flag = DEFAULT_BUTTON;  // Reset the flag
+        }        
+
+        if (update_flag) {
+
+            read_datetime(); 
+
+            read_sensors();  
+
+            check_alarm2();
+
             if (time_hour >= 21 && time_hour <= 23) {
                 pwm_set_duty_cycle(64);
             } else if ((time_hour >= 23 && time_hour <= 24) || (time_hour >= 0 && time_hour <= 6)) {
@@ -366,20 +444,31 @@ int main() {
             } else {
                 pwm_set_duty_cycle(96);
             }
-        } else {
-            // Check if we just switched to display 1
-            if(previous_display_mode != 1) {
-                //lcd_clear_line(1); // Clear line 1 when switching to display 1
-                lcd_clear();
+
+            if (previous_display_mode != current_display_mode) {
+                lcd_clear(); // Clear the display when switching modes
             }
-            if (display_update_flag) {
+
+            switch (current_display_mode)
+            {
+            case 0:
+                update_display0();
+                break;
+            case 1:
                 update_display1();
-                check_alarm2();
-                display_update_flag = 0;
-            }            
+                break;
+            case 2:
+                update_display2();
+                break;
+            default:
+                update_display0();
+                break;
+            }
+            
+            previous_display_mode = current_display_mode;
+
+            update_flag = 0;
         }
-        
-        previous_display_mode = current_display_mode;
 
         
 
