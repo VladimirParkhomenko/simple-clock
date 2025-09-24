@@ -1,6 +1,6 @@
 # Simple Clock - AVR Weather Station
 
-A comprehensive AVR-based weather station and digital clock project featuring real-time clock, environmental sensors, and an intelligent display system with alarm functionality.
+A comprehensive AVR-based weather station and digital clock project featuring real-time clock, environmental sensors, and an intelligent display system with advanced alarm functionality and power management.
 
 ## 📋 Table of Contents
 
@@ -19,7 +19,7 @@ A comprehensive AVR-based weather station and digital clock project featuring re
 
 ## 🌟 Overview
 
-This project implements a sophisticated weather station and digital clock using an AVR microcontroller (ATmega328P). The system combines multiple sensors to provide real-time environmental data, precise timekeeping, and intelligent display management with automatic brightness control and alarm functionality.
+This project implements a sophisticated weather station and digital clock using an AVR microcontroller (ATmega328P). The system combines multiple sensors to provide real-time environmental data, precise timekeeping, and intelligent display management with automatic brightness control, advanced alarm functionality, and power management features.
 
 ## ✨ Features
 
@@ -27,14 +27,16 @@ This project implements a sophisticated weather station and digital clock using 
 - **Real-time Clock**: DS3231 RTC module with battery backup
 - **Environmental Monitoring**: 
   - Temperature and humidity (DHT22)
-  - Barometric pressure (BMP180/BME280)
+  - Barometric pressure (BMP180)
   - Internal temperature from DS3231
-- **Dual Display Modes**:
-  - Large digital time display (40 seconds)
-  - Detailed weather information (20 seconds)
-- **Smart Alarm System**: Multiple alarm patterns with progressive escalation
-- **Automatic Brightness Control**: Time-based LCD backlight management
+- **Triple Display Modes**:
+  - Large digital time display (30 seconds)
+  - Calendar and date information (15 seconds)
+  - Weather sensor data (15 seconds)
+- **Advanced Alarm System**: Multi-stage alarm with progressive escalation
+- **Intelligent Brightness Control**: Time-based LCD backlight management
 - **Interactive Controls**: Button-based mode switching
+- **Power Management**: Watchdog timer and sleep capabilities
 
 ### Advanced Features
 - **Custom LCD Characters**: Large digit display using custom character sets
@@ -42,6 +44,24 @@ This project implements a sophisticated weather station and digital clock using 
 - **Interrupt-driven Architecture**: Timer-based updates and button handling
 - **PWM Backlight Control**: Smooth brightness transitions
 - **Musical Alarms**: Multiple ringtone patterns for different alarm stages
+- **Smart Sensor Reading**: Optimized sensor polling (every 30 seconds, disabled at night)
+
+## 🆕 Recent Updates
+
+### Version 2.0 Features
+- **Triple Display System**: Enhanced from dual to triple display modes with optimized timing
+- **Advanced Alarm System**: Multi-stage progressive alarm with weekend mode
+- **Power Management**: Watchdog timer implementation for system reliability
+- **PlatformIO Support**: Modern build system integration alongside traditional Make
+- **Optimized Sensor Reading**: Smart polling strategy to reduce power consumption
+- **Enhanced Brightness Control**: More granular time-based brightness management
+- **Improved Display Content**: Better organized weather information display
+
+### Key Improvements
+- **Reliability**: Watchdog timer prevents system hangs
+- **Efficiency**: Reduced sensor polling during night hours
+- **User Experience**: Better display mode organization and timing
+- **Maintainability**: PlatformIO integration for easier development
 
 ## 🔧 Hardware Requirements
 
@@ -53,10 +73,10 @@ This project implements a sophisticated weather station and digital clock using 
 ### Sensors and Modules
 - **DS3231 RTC Module**: Real-time clock with temperature sensor
 - **DHT22**: Digital temperature and humidity sensor
-- **BMP180/BME280**: Barometric pressure sensor
+- **BMP180**: Barometric pressure sensor
 - **LCD1602 with I2C Backpack**: 16x2 character display
 - **Buzzer**: Piezo buzzer for alarm sounds
-- **Photoresistor**: Ambient light sensing (optional)
+- **Photoresistor**: Ambient light sensing (optional, currently disabled)
 - **Push Button**: Mode switching control
 
 ### Power Requirements
@@ -98,20 +118,25 @@ This project implements a sophisticated weather station and digital clock using 
    cd simple-clock
    ```
 
-2. **Configure build settings**:
+2. **Install PlatformIO** (if not already installed):
    ```bash
-   # Edit Makefile or platformio.ini for your specific setup
-   # Ensure F_CPU is set to 8000000UL for 8MHz operation
+   pip install platformio
    ```
 
-3. **Compile the project**:
+3. **Build the project**:
    ```bash
-   make clean
-   make all
+   pio run
    ```
 
 4. **Upload to microcontroller**:
    ```bash
+   pio run --target upload
+   ```
+
+5. **Alternative: Using Make** (if preferred):
+   ```bash
+   make clean
+   make all
    make upload
    ```
 
@@ -148,33 +173,41 @@ This project implements a sophisticated weather station and digital clock using 
 
 ### Display Modes
 
-The system automatically cycles between two display modes:
+The system automatically cycles between three display modes:
 
-#### Mode 0: Large Time Display (40 seconds)
-- Shows large, easy-to-read time format
+#### Mode 0: Large Time Display (30 seconds)
+- Shows large, easy-to-read time format using custom characters
 - Displays current time in HH:MM:SS format
 - Optimized for distance viewing
+- Only mode active during night hours (0:00-6:00)
 
-#### Mode 1: Weather Information (20 seconds)
-- **Line 1**: Time (HH:MM:SS) and Pressure (mmHg)
-- **Line 2**: Date (DD/MM), Temperature (°C), Humidity (%)
+#### Mode 1: Calendar Display (15 seconds)
+- **Line 1**: Time (HH:MM:SS) and Month abbreviation
+- **Line 2**: Day of month, Full day name, Year
+- Shows complete date and time information
+
+#### Mode 2: Weather Information (15 seconds)
+- **Line 1**: BMP180 temperature, DHT22 temperature, DS3231 temperature
+- **Line 2**: DHT22 humidity, BMP180 pressure (mmHg)
 - Only displays during daylight hours (6:00-23:00)
+- Sensors read every 30 seconds
 
 ### Alarm System
 
-The alarm system features progressive escalation:
+The alarm system features progressive escalation with multiple stages:
 
 1. **Initial Alarm** (at set time): Beep every 15 seconds
-2. **+1 minute**: Beep every 10 seconds
-3. **+3 minutes**: Ringtone every 20 seconds
-4. **+6 minutes**: Alarm beep every 20 seconds
-5. **+10 minutes**: Alarm beep every 20 seconds
-6. **+12 minutes**: Cheerful wake-up melody every 20 seconds
+2. **+1 minute**: Beep every 10 seconds  
+3. **+5 minutes**: Ringtone every 20 seconds
+4. **+10 minutes**: Alarm beep every 20 seconds
+5. **+11 minutes**: Alarm beep every 15 seconds
+
+**Note**: Alarm is disabled on Saturdays (weekend mode)
 
 ### Brightness Control
 
 Automatic brightness adjustment based on time:
-- **Night (23:00-06:00)**: Display off
+- **Night (23:00-06:00)**: Display off (0% brightness)
 - **Evening (21:00-23:00)**: Dim (64% brightness)
 - **Morning (06:00-07:00)**: Dim (64% brightness)
 - **Day (07:00-21:00)**: Full brightness (96%)
@@ -252,8 +285,24 @@ float BMP180_readPressure(void);
 void initTimer2(void);
 void playBeep(void);
 void playAlarmBeep(void);
-void playCheerfulWake(void);
 void playRingtone2(void);
+void playNote(uint16_t frequency, uint16_t duration);
+void playMorningScale(void);
+void playBugleCall(void);
+void playCheerfulWake(void);
+void playChimePattern(void);
+```
+
+### Power Management
+```c
+void init_watchdog(void);
+void wdt_reset(void);
+```
+
+### PWM Control
+```c
+void pwm_init(int8_t pin);
+void pwm_set_duty_cycle(uint8_t duty_cycle);
 ```
 
 ## ⚙️ Configuration
@@ -277,7 +326,17 @@ void playRingtone2(void);
 ### Display Timing
 ```c
 // Display mode switching (in main loop)
-uint8_t current_display_mode = (time_second % 60 < 40) ? 0 : 1;
+// 0 → for 0–29 seconds (30 seconds)
+// 1 → for 30–44 seconds (15 seconds)  
+// 2 → for 45–59 seconds (15 seconds)
+current_display_mode = (time_second % 60 < 30) ? 0 : ((time_second % 60 < 45) ? 1 : 2);
+```
+
+### Power Management
+```c
+// Watchdog timer configuration
+wdt_enable(WDTO_8S);  // 8-second timeout
+WDTCSR |= (1 << WDIE);  // Enable watchdog interrupt
 ```
 
 ## 🔧 Troubleshooting
@@ -317,6 +376,18 @@ Enable UART debugging by uncommenting UART-related code in main.c:
 //uart_init(UART_BAUD_SELECT(UART_BAUD_RATE, F_CPU));
 ```
 
+### Power Management Issues
+
+1. **System Hanging**: 
+   - Check watchdog timer configuration
+   - Verify `wdt_reset()` calls in main loop
+   - Ensure proper interrupt handling
+
+2. **Display Not Updating**:
+   - Check Timer1 configuration and interrupts
+   - Verify `update_flag` is being set properly
+   - Ensure global interrupts are enabled (`sei()`)
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -341,8 +412,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Sergey Denisov** - Original LCD library implementation
 - **Andy Gock** - UART library foundation
-- **Bosch Sensortec** - BMP180/BME280 sensor documentation
+- **Bosch Sensortec** - BMP180 sensor documentation
 - **AVR Community** - Various sensor driver implementations
+- **PlatformIO** - Modern embedded development platform
 
 ## 📞 Support
 

@@ -375,8 +375,8 @@ int main() {
     init_buttons_interrupts();
 
     // Set initial display mode    
-    // DS3231_setTime(17, 37, 0, SUNDAY);
-    // DS3231_setDate(21, 9, 25);
+    // DS3231_setTime(15, 47, 0, TUESDAY);
+    // DS3231_setDate(23, 9, 25);
 
     // Set initial Alarm2 to 07:00
     // DS3231_clearAlarm2();
@@ -413,7 +413,11 @@ int main() {
         // 1 → for 30–44 seconds (15 seconds)
         // 2 → for 45–59 seconds (15 seconds)
         current_display_mode = (time_second % 60 < 30) ? 0 : ((time_second % 60 < 45) ? 1 : 2);
-        // current_display_mode = 2;
+
+         if (time_hour >= 0 && time_hour <= 6) {
+                current_display_mode = 0; // Only display mode 0 at night
+            }
+        
 
         if (button_pressed_flag) {
             // Change the display mode when the button is pressed.
