@@ -415,9 +415,12 @@ int main() {
         current_display_mode = (time_second % 60 < 30) ? 0 : ((time_second % 60 < 45) ? 1 : 2);
 
          if (time_hour >= 0 && time_hour <= 6) {
-                current_display_mode = 0; // Only display mode 0 at night
-            }
-        
+            current_display_mode = 0; // Only display mode 0 at night
+        }
+
+        if (alarm2_hour == time_hour && (time_minute >= alarm2_minute  && time_minute <= alarm2_minute + 12)){
+            current_display_mode = 0; // Only display mode 0 at alarm time
+        }    
 
         if (button_pressed_flag) {
             // Change the display mode when the button is pressed.
